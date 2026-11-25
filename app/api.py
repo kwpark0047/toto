@@ -211,6 +211,34 @@ def api_account_sessions(ctx):
 # ---------------------------------------------------------------- 공개 포털
 # 로그인 없이 쓰는 서비스 소개·매장 목록·문의·게시판. 개인정보는 받는 목적만큼만.
 
+@route("GET", r"/api/health")
+def api_health(ctx):
+    """운영 점검용 — 지금 어느 DB(turso/sqlite)로 붙어 있고 기본 테이블이 있는지.
+
+    개인정보는 담지 않는다. Vercel 재배포 뒤 Turso 영구 DB 연결을 확인할 때 쓴다.
+    """
+    try:
+        with store.read() as conn:
+            row = conn.execute(
+                "SELECT (SELECT COUNT(*) FROM stores) AS stores,"
+                " (SELECT COUNT(*) FROM menu_items) AS items,"
+                " (SELECT COUNT(*) FROM dining_tables) AS tbls"
+            ).fetchone()
+        return json_response({
+            "ok": True,
+            "db": store.backend(),
+            "stores": row["stores"],
+            "items": row["items"],
+            "tables": row["tbls"],
+            "time": store.now(),
+        })
+    except Exception as exc:  # noqa: BLE001 — 상태 확인은 어떤 오류든 503 으로 알린다
+        import sys
+        print(f"health check 실패: {exc}", file=sys.stderr, flush=True)
+        return json_response({"ok": False, "db": store.backend(),
+                              "error": "DB 연결을 확인해 주세요"}, 503)
+
+
 @route("GET", r"/api/public/stores")
 def api_public_stores(ctx):
     return json_response(portal.public_stores())
