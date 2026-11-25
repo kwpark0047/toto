@@ -47,7 +47,8 @@ body.cust {
   box-shadow: 0 8px 18px -12px rgba(28, 25, 23, .9);
   border: 1px solid rgba(255, 255, 255, .1);
 }
-.table-chip b { font-size: 16px; font-family: var(--font); letter-spacing: 0; }
+.table-chip b { font-size: 15.5px; font-family: var(--font); letter-spacing: 0; display: inline; max-width: none; overflow: visible; }
+.cust-head .table-chip { display: inline-flex; align-items: baseline; gap: 5px; }
 
 /* ---------- 메뉴 / 주문 내역 전환 ---------- */
 .seg {

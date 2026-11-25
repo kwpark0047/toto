@@ -128,6 +128,11 @@
               </div>
             </section>
           </div>
+          <div class="board-sum">
+            <div><span>오늘 주문</span><b>38<em>건</em></b></div>
+            <div><span>주방 평균</span><b>6분 12초</b></div>
+            <div><span>재방문</span><b>38<em>%</em></b></div>
+          </div>
           <div class="board-foot">
             <div class="feed" id="boardFeed"><span>12:04:02</span>테이블 03 · 떡볶이 2 · 김밥 1 · 주문 전송</div>
             <button class="board-play" id="boardPlay" type="button" aria-pressed="true">⏸ 일시정지</button>
@@ -225,11 +230,14 @@
                 <div class="rc-steps">
                   <div class="rc-step done"><i></i><b>접수 완료</b><span>12:04</span></div>
                   <div class="rc-step done"><i></i><b>조리 시작</b><span>12:05</span></div>
-                  <div class="rc-step now"><i></i><b>조리 중</b><span>약 6분</span></div>
+                  <div class="rc-step now"><i></i><b>조리 중</b><span>진행</span></div>
                   <div class="rc-step"><i></i><b>서빙 준비</b><span>—</span></div>
                 </div>
-                <div class="rc-rule"></div>
-                <div class="rc-line"><span>남은 시간</span><b class="rc-big">6:00</b></div>
+                <div class="rc-count">
+                  <b>6:00</b>
+                  <span>남은 예상 시간</span>
+                </div>
+                <div class="rc-progress"><i></i></div>
                 <div class="rc-foot">“주문 들어갔어요?”를 묻지 않아도 됩니다</div>
               </div>
               <div class="scene" data-scene="4">
@@ -267,6 +275,8 @@
                   <div class="cn-alarm">⚠ 알레르기 · 난류 확인 후 조리</div>
                   <div class="cn-btn">접수하기</div>
                 </div>
+                <div class="cn-kv"><span>결제 전</span><b>12,500원</b></div>
+                <div class="cn-kv"><span>주문 경로</span><b>QR · 테이블 03</b></div>
               </div>
               <div class="scene" data-scene="2">
                 <div class="cn-label">메뉴별 묶음 · 3개 테이블</div>

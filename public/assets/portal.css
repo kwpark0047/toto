@@ -236,8 +236,8 @@ body.portal {
 /* 손님 주문 슬립 */
 .slip {
   background: rgba(255, 255, 255, .04); border: 1px solid rgba(148, 163, 184, .18);
-  border-radius: 6px; padding: 8px 9px;
-  font-family: var(--font-mono); font-size: 9.5px; line-height: 1.9; color: #cbd5e1;
+  border-radius: 6px; padding: 9px 10px;
+  font-family: var(--font-mono); font-size: 10px; line-height: 1.95; color: #cbd5e1;
 }
 .slip-row { display: flex; justify-content: space-between; gap: 6px; }
 .slip-row.new { color: #fff; }
@@ -266,7 +266,7 @@ body.portal {
 .ticket-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 .ticket-top b { font-family: var(--font-mono); font-size: 12px; color: #fff; letter-spacing: -.02em; }
 .ticket-top span { font-family: var(--font-mono); font-size: 10px; color: #94a3b8; }
-.ticket-items { font-family: var(--font-mono); font-size: 9px; color: #94a3b8; margin-top: 7px; }
+.ticket-items { font-family: var(--font-mono); font-size: 9.5px; color: #94a3b8; margin-top: 7px; }
 .rail { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 9px 0 0; padding: 0; }
 .rail li {
   position: relative; font-family: var(--font-mono); font-size: 8px; letter-spacing: .04em;
@@ -313,7 +313,7 @@ body.portal {
 .store-rows { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
 .store-rows li {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--font-mono); font-size: 8.5px; color: #94a3b8;
+  font-family: var(--font-mono); font-size: 9px; color: #94a3b8;
   border-top: 1px solid rgba(148, 163, 184, .12); padding-top: 4px;
 }
 .store-rows li::before { content: ""; width: 4px; height: 4px; border-radius: 1px; background: #475569; }
@@ -321,6 +321,23 @@ body.portal {
 .store-rows li.hot::before { background: var(--accent-2); }
 .store-rows li.hot b { color: #6ee7b7; }
 
+.board-sum {
+  position: relative; display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid rgba(148, 163, 184, .16);
+}
+.board-sum > div {
+  padding: 8px 13px 9px; border-right: 1px solid rgba(148, 163, 184, .12);
+}
+.board-sum > div:last-child { border-right: 0; }
+.board-sum span {
+  display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .12em;
+  text-transform: uppercase; color: #7c8da6;
+}
+.board-sum b {
+  display: block; margin-top: 2px; font-family: var(--font-mono); font-size: 12px;
+  color: #e2e8f0; letter-spacing: -.01em; font-weight: 700;
+}
+.board-sum b em { font-style: normal; color: #6ee7b7; }
 .board-foot {
   position: relative; display: flex; align-items: center; gap: 10px;
   border-top: 1px solid rgba(148, 163, 184, .16);
@@ -406,7 +423,7 @@ body.portal {
   font-family: var(--font-mono); font-size: 9px; font-style: normal; color: var(--muted);
   transition: all .2s ease;
 }
-.tl-node b { font-size: 11.5px; font-weight: 700; letter-spacing: -.01em; line-height: 1.3; }
+.tl-node b { font-size: 12px; font-weight: 700; letter-spacing: -.015em; line-height: 1.3; }
 .tl-node:hover i { border-color: var(--ink); color: var(--ink); }
 .tl-node.on { color: var(--ink); }
 .tl-node.on i { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -528,6 +545,23 @@ body.portal {
   background: rgba(236, 253, 245, .6);
 }
 .rc-foot { margin-top: 14px; font-size: 8.5px; letter-spacing: .04em; color: var(--muted-2); text-align: center; line-height: 1.7; }
+.rc-count { text-align: center; margin: auto 0 0; padding-top: 10px; }
+.rc-count b {
+  display: block; font-family: var(--font-mono); font-size: 38px; font-weight: 700;
+  letter-spacing: -.05em; color: var(--ink); line-height: 1;
+}
+.rc-count span {
+  display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 8px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+.rc-progress { height: 3px; background: var(--line); border-radius: 1px; overflow: hidden; margin: 10px 0 0; }
+.rc-progress i { display: block; height: 100%; background: var(--accent); width: 58%; }
+.rc-progress i::after {
+  content: ""; display: block; height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .8), transparent);
+  animation: sweep 2.4s linear infinite;
+}
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
 /* 사장님 시선 — 데이터 콘솔 */
 .console {
@@ -973,7 +1007,7 @@ body.portal {
   border-radius: 4px; padding: 3px 0; text-align: center;
 }
 .post .cat.update { color: #92400e; background: var(--amber-soft); border-color: #fde68a; }
-.post .cat.review { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+.post .cat.review { color: #334155; background: #f1f5f9; border-color: #e2e8f0; }
 .post h3 { font-size: 15.5px; letter-spacing: -.025em; }
 .post .meta {
   margin-top: 5px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
