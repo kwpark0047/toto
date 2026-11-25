@@ -128,17 +128,14 @@ body.portal {
   padding: 64px 0 58px;
   border-bottom: 1px solid var(--line);
   overflow: hidden;
-}
-.hero::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  /* 격자는 배경 레이어로만 그린다 — 글자 위에 겹치는 의사요소를 두지 않는다. */
   background-image:
-    linear-gradient(to right, rgba(15, 23, 42, .045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, .045) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 88% 70% at 50% 30%, #000 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 88% 70% at 50% 30%, #000 40%, transparent 100%);
+    linear-gradient(to right, rgba(15, 23, 42, .05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, .05) 1px, transparent 1px);
+  background-size: 56px 56px, 56px 56px;
+  background-position: center top, center top;
 }
-.hero .portal-wrap { position: relative; }
+.hero .portal-wrap { position: relative; z-index: 1; }
 .hero-split {
   display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
   gap: 52px; align-items: center;
@@ -173,23 +170,17 @@ body.portal {
 /* ---- 라이브 연결 보드 ---- */
 .board {
   position: relative;
-  background:
+  background-color: #0b1220;
+  background-image:
     radial-gradient(420px 220px at 100% 0%, rgba(16, 185, 129, .14), transparent 70%),
-    #0b1220;
+    linear-gradient(to right, rgba(148, 163, 184, .07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, .07) 1px, transparent 1px);
+  background-size: auto, 34px 34px, 34px 34px;
   border: 1px solid #1b2a41;
   border-radius: 14px;
   color: #e2e8f0;
   box-shadow: 0 40px 80px -50px rgba(11, 18, 32, .95), inset 0 1px 0 rgba(255, 255, 255, .05);
   overflow: hidden;
-}
-.board::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, .07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, .07) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(180deg, #000, transparent 78%);
-  -webkit-mask-image: linear-gradient(180deg, #000, transparent 78%);
 }
 .board-top {
   position: relative; display: flex; align-items: center; gap: 10px;
@@ -568,19 +559,15 @@ body.portal {
 
 /* 사장님 시선 — 데이터 콘솔 */
 .console {
-  width: 100%; background: #0b1220; border: 1px solid #1b2a41; border-radius: 10px;
+  width: 100%; border: 1px solid #1b2a41; border-radius: 10px;
   color: #e2e8f0; overflow: hidden; display: flex; flex-direction: column; min-height: 400px;
   box-shadow: 0 26px 60px -46px rgba(11, 18, 32, .95), inset 0 1px 0 rgba(255, 255, 255, .05);
   position: relative;
-}
-.console::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-color: #0b1220;
   background-image:
     linear-gradient(to right, rgba(148, 163, 184, .06) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148, 163, 184, .06) 1px, transparent 1px);
-  background-size: 30px 30px;
-  mask-image: linear-gradient(180deg, #000, transparent 85%);
-  -webkit-mask-image: linear-gradient(180deg, #000, transparent 85%);
+  background-size: 30px 30px, 30px 30px;
 }
 .console-top {
   position: relative; display: flex; align-items: center; gap: 8px;
@@ -714,21 +701,14 @@ body.portal {
    ========================================================================== */
 .stat-band {
   position: relative; overflow: hidden;
-  background: #0b1220; border: 1px solid #1b2a41; border-radius: 14px;
+  background-color: #0b1220; border: 1px solid #1b2a41; border-radius: 14px;
   padding: 30px 32px; color: #fff;
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
   box-shadow: 0 34px 70px -56px rgba(11, 18, 32, .95);
-}
-.stat-band::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image:
+    radial-gradient(240px 240px at 102% -20%, rgba(16, 185, 129, .22), transparent 70%),
     linear-gradient(to right, rgba(148, 163, 184, .07) 1px, transparent 1px);
-  background-size: 25% 100%;
-}
-.stat-band::after {
-  content: ""; position: absolute; right: -60px; top: -80px; width: 240px; height: 240px;
-  background: radial-gradient(circle, rgba(16, 185, 129, .22), transparent 68%);
-  pointer-events: none;
+  background-size: auto, 25% 100%;
 }
 .stat-band > div { position: relative; padding: 0 22px; border-left: 1px solid rgba(148, 163, 184, .2); }
 .stat-band > div:first-child { padding-left: 0; border-left: 0; }
@@ -804,13 +784,10 @@ body.portal {
 .page-hero {
   padding: 54px 0 34px; border-bottom: 1px solid var(--line);
   position: relative; overflow: hidden;
-}
-.page-hero::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image: linear-gradient(to right, rgba(15, 23, 42, .04) 1px, transparent 1px);
-  background-size: 56px 100%;
-  mask-image: linear-gradient(90deg, #000, transparent 70%);
-  -webkit-mask-image: linear-gradient(90deg, #000, transparent 70%);
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, .045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, .045) 1px, transparent 1px);
+  background-size: 56px 56px, 56px 56px;
 }
 .page-hero .ph-grid {
   position: relative; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
@@ -1066,19 +1043,15 @@ body.portal {
    ========================================================================== */
 .closer {
   position: relative; overflow: hidden;
-  background: #0b1220; border: 1px solid #1b2a41; border-radius: 14px;
+  background-color: #0b1220; border: 1px solid #1b2a41; border-radius: 14px;
   padding: 44px 40px; color: #fff;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center;
   box-shadow: 0 34px 80px -60px rgba(11, 18, 32, .95);
-}
-.closer::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image:
+    radial-gradient(280px 280px at 96% 20%, rgba(16, 185, 129, .16), transparent 72%),
     linear-gradient(to right, rgba(148, 163, 184, .08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148, 163, 184, .08) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 70% 120% at 90% 50%, #000, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 120% at 90% 50%, #000, transparent 75%);
+  background-size: auto, 44px 44px, 44px 44px;
 }
 .closer > * { position: relative; }
 .closer .eyebrow { color: var(--accent-2); }
