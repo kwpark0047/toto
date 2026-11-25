@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 테이블 관리</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/customers.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>테이블 관리</h1>
+      <p>테이블을 만들면 고객 주소(/t/번호)와 QR이 바로 생깁니다. 주문 이력이 있는 테이블은 삭제 대신 비활성으로 두세요.</p>
+    </div>
+    <div class="row" style="margin-left:auto; gap:8px">
+      <a class="btn sm ghost" href="/qr">QR·NFC 인쇄</a>
+      <button class="btn sm primary" id="addBtn">+ 테이블 추가</button>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row wrap" style="gap:10px">
+      <span class="badge" id="totalBadge">테이블 0개</span>
+      <span class="badge green" id="activeBadge">사용 0</span>
+      <span class="badge red" id="offBadge">비활성 0</span>
+      <span class="badge line" id="seatBadge">좌석 0석</span>
+      <span class="small muted" id="shopLine"></span>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div id="tableList"></div>
+  </div>
+
+  <p class="small muted" style="margin-top:14px;line-height:1.6">
+    매장 공통 QR: <b id="shopUrl">/</b> (손님이 테이블 선택) · 테이블별 QR·NFC: <b>/t/번호</b><br>
+    테이블을 비활성으로 바꾸면 그 QR 주소로는 주문을 받지 않고 안내 문구가 나옵니다.
+  </p>
+</main>
+
+<div class="sheet-back" id="back"></div>
+<div class="sheet" id="tableSheet" role="dialog" aria-label="테이블 정보">
+  <div class="sheet-head">
+    <h3 id="tbTitle">테이블 추가</h3>
+    <button class="x" data-close>✕</button>
+  </div>
+  <div class="sheet-body" id="tbBody">
+    <div class="field"><label for="tbLabel">테이블 이름</label>
+      <input class="input" id="tbLabel" maxlength="20" placeholder="예: 1번, 창가, 룸1"></div>
+    <div class="field"><label for="tbSeats">좌석 수 (선택)</label>
+      <input class="input" id="tbSeats" type="number" min="0" max="50" value="4" inputmode="numeric"></div>
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="checkbox" id="tbActive" checked style="width:20px;height:20px;accent-color:var(--brand)">
+      <span>사용 중</span>
+    </label>
+    <div id="tbInfo" class="small muted"></div>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn primary grow" id="tbSave">저장</button>
+    <button class="btn danger hidden" id="tbDelete">삭제</button>
+  </div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/tables.js"></script>
+</body>
+</html>

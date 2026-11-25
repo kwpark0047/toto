@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 매출·정산</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/revenue.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>매출·정산</h1>
+      <p>현금 결제 확인된 주문만 매출로 잡습니다. 취소·할인(포인트)·미수금은 따로 보여 줍니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <a class="btn sm ghost" id="csvBtn" href="/api/revenue.csv?preset=today">CSV 내려받기</a>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row wrap" style="gap:8px">
+      <button class="chip on" data-preset="today">오늘</button>
+      <button class="chip" data-preset="week">이번 주</button>
+      <button class="chip" data-preset="month">이번 달</button>
+      <span class="spacer"></span>
+      <input class="input" type="date" id="start" style="max-width:170px">
+      <span class="muted">~</span>
+      <input class="input" type="date" id="end" style="max-width:170px">
+      <button class="btn sm" id="apply">직접 선택</button>
+      <span class="badge line" id="rangeLabel">–</span>
+    </div>
+  </div>
+
+  <div class="stats" id="totals" style="margin-bottom:14px"></div>
+
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card pad">
+      <div class="row between" style="margin-bottom:8px"><h3 style="font-size:18px">일별 매출</h3>
+        <span class="small muted">결제 확인 금액</span></div>
+      <div id="days" class="tblwrap"></div>
+    </div>
+    <div class="card pad">
+      <div class="row between" style="margin-bottom:8px"><h3 style="font-size:18px">시간대별</h3>
+        <span class="small muted" id="peakLabel"></span></div>
+      <div id="hours" class="hourlist"></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:8px">결제수단</h3>
+      <div id="methods"></div>
+    </div>
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:8px">카테고리 비중</h3>
+      <div id="cats"></div>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="row between" style="margin-bottom:8px"><h3 style="font-size:18px">인기 메뉴</h3>
+      <span class="small muted">결제 확인 기준</span></div>
+    <div id="items"></div>
+  </div>
+
+  <p class="small muted" style="margin-top:14px;line-height:1.6">
+    · 카드·간편결제는 PG 연동이 없어 항상 0원입니다(표시만).<br>
+    · 할인은 포인트 사용액입니다. 취소 건은 매출에서 빠지고 따로 집계됩니다.<br>
+    · 미수금은 조리·서빙은 끝났지만 현금 결제 확인이 아직 안 된 금액입니다.
+  </p>
+</main>
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/revenue.js"></script>
+</body>
+</html>

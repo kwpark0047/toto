@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14100d">
+<title>맛집 · 주방 화면</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/kitchen.css">
+</head>
+<body class="kds">
+<header class="kds-head">
+  <div class="kh-left">
+    <span class="klogo">맛</span>
+    <div>
+      <b>맛집 주방</b>
+      <span id="clock">–</span>
+    </div>
+  </div>
+  <div class="kh-counts" id="counts"></div>
+  <div class="kh-right">
+    <button class="kbtn ghost" id="ttsBtn" title="새 주문을 소리로 읽어 줍니다">🗣 음성 안내 켜짐</button>
+    <button class="kbtn ghost" id="wakeBtn" title="화면이 꺼지지 않게">💡 화면 유지</button>
+    <button class="kbtn ghost" id="soundBtn">🔔 소리 켜짐</button>
+    <span data-staff-tools class="row" style="gap:8px"></span>
+  </div>
+</header>
+
+<main class="kds-main">
+  <section class="servewrap" id="serveWrap">
+    <div class="serve-head">🍽 <b>서빙 대기</b> <span id="serveCount" class="muted small"></span>
+      <span class="muted small">· 조리완료 후 경과 시간</span></div>
+    <div id="serving" class="serve-list"></div>
+  </section>
+  <div class="ktabs" id="ktabs">
+    <button class="ktab on" data-view="order">테이블별</button>
+    <button class="ktab" data-view="menu">메뉴별 묶음</button>
+  </div>
+  <div id="queue" class="queue"></div>
+  <div id="grouped" class="grouped hidden"></div>
+  <div id="emptyQueue" class="empty-queue hidden">
+    <div style="font-size:52px">🍳</div>
+    <div style="font-size:26px;font-weight:900">조리할 주문이 없습니다</div>
+    <div class="muted" style="font-size:17px">새 주문이 들어오면 소리와 함께 나타납니다</div>
+  </div>
+</main>
+
+<footer class="kds-foot">
+  <div class="kcalls" id="kcalls"></div>
+  <div class="tstrip" id="tstrip"></div>
+</footer>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/kitchen.js"></script>
+</body>
+</html>

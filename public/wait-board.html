@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14100d">
+<title>맛집 · 대기 현황</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/wait.css">
+</head>
+<body class="board">
+<header class="board-head">
+  <span class="logo" id="bLogo">맛</span>
+  <div>
+    <b id="bStore">맛집</b>
+    <div style="font-size:15px;color:#b5a596" id="bSub">대기 현황</div>
+  </div>
+  <span class="clock" id="bClock">–</span>
+</header>
+
+<main class="board-main">
+  <section class="board-call">
+    <h2>지금 입장해 주세요</h2>
+    <div class="calls" id="calls"><div class="empty-board">호출 중인 번호가 없습니다</div></div>
+  </section>
+
+  <section class="board-wait">
+    <h2>기다리는 번호 <span id="waitCount" style="color:#fff">0팀</span></h2>
+    <div class="numbers" id="numbers"><div class="empty-board">대기 중인 번호가 없습니다</div></div>
+  </section>
+</main>
+
+<footer class="board-foot">
+  <span>예상 대기 <b id="estimate">계산 중</b></span>
+  <span>오늘 입장 <b id="seated">0</b></span>
+  <span>접수는 입구 QR·NFC로 <b>/wait</b></span>
+  <span style="margin-left:auto" id="updated"></span>
+</footer>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/wait-board.js"></script>
+</body>
+</html>

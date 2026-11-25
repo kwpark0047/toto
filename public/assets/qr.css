@@ -1,0 +1,24 @@
+/* 테이블 QR */
+.qgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.qcard {
+  background: #fff; border: 1.5px solid var(--line); border-radius: 18px; padding: 18px 16px;
+  text-align: center; break-inside: avoid;
+}
+.qcard .tno { font-size: 26px; font-weight: 900; letter-spacing: -.02em; }
+.qcard .shop { font-size: 13px; color: var(--muted); font-weight: 700; margin-top: 1px; }
+.qcard img.qr { width: 100%; max-width: 210px; margin: 12px auto 8px; display: block; }
+.qcard .url { font-size: 11.5px; color: var(--muted); word-break: break-all; }
+.qcard .dl { margin-top: 10px; }
+.print-title { display: none; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; }
+  .topbar, .no-print, .page-head .row { display: none !important; }
+  .page { padding: 0; }
+  .print-title { display: block; text-align: center; font-size: 18px; font-weight: 900; margin-bottom: 8mm; }
+  .qgrid { grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .qcard { border: 1px dashed #bbb; padding: 5mm 4mm; }
+  .qcard .dl { display: none; }
+  .qcard img.qr { max-width: 62mm; }
+}

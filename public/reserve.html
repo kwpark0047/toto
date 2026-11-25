@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>예약 신청</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/reserve.css">
+</head>
+<body>
+<main class="wrap page" style="max-width:620px">
+  <header class="rs-head">
+    <div class="logo" id="shopInitial">맛</div>
+    <div>
+      <h1 id="shopName">맛집</h1>
+      <p class="small muted" id="shopLine">예약 신청 · 사장님 확인 후 확정됩니다</p>
+    </div>
+  </header>
+
+  <section id="formCard" class="card pad">
+    <h2 style="font-size:20px;margin-bottom:4px">예약 신청</h2>
+    <p class="small muted" style="margin:0 0 12px">날짜·시간·인원을 남겨 주세요. 사장님이 확인하고 확정하면 예약이 완료됩니다.</p>
+    <div class="grid2">
+      <div class="field"><label for="rDate">날짜</label><input class="input" id="rDate" type="date"></div>
+      <div class="field"><label for="rTime">시간</label><input class="input" id="rTime" type="time" value="18:30"></div>
+      <div class="field"><label for="rParty">인원</label><input class="input" id="rParty" type="number" min="1" max="30" value="2"></div>
+      <div class="field"><label for="rName">이름</label><input class="input" id="rName" maxlength="20" autocomplete="name"></div>
+      <div class="field"><label for="rPhone">연락처</label><input class="input" id="rPhone" inputmode="tel" placeholder="010-0000-0000" autocomplete="tel"></div>
+      <div class="field"><label for="rMemo">요청 (선택)</label><input class="input" id="rMemo" maxlength="200" placeholder="예: 창가 자리"></div>
+    </div>
+    <label class="consent" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px">
+      <input type="checkbox" id="rConsent" style="width:20px;height:20px;accent-color:var(--brand);margin-top:2px">
+      <span class="small">예약 확인을 위해 이름·연락처를 수집·이용하는 데 동의합니다 (필수). 예약 처리 목적으로만 쓰고 다른 곳에 보내지 않습니다. <a href="/privacy" target="_blank">처리방침</a></span>
+    </label>
+    <button class="btn primary" id="rSend" style="width:100%;margin-top:14px">예약 신청하기</button>
+    <p class="small muted" style="margin:10px 0 0">문자 알림은 보내지 않습니다. 확정 여부는 매장에 문의해 주세요.</p>
+  </section>
+
+  <section id="resultCard" class="card pad hidden">
+    <h2 style="font-size:20px" id="resultTitle">신청이 접수됐습니다</h2>
+    <div id="resultBody" class="small" style="line-height:1.7"></div>
+    <button class="btn ghost" id="againBtn" style="margin-top:12px">다른 예약 신청</button>
+  </section>
+
+  <p class="small muted" style="text-align:center;margin-top:18px"><a href="/" style="color:var(--brand)">← 매장으로</a></p>
+</main>
+<script src="/assets/util.js"></script>
+<script src="/assets/reserve.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 회원 관리</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/customers.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>회원 관리</h1>
+      <p>주문할 때 이름·연락처를 남긴 손님이 회원으로 쌓입니다. 등급·포인트는 결제 확인 기준으로 자동 계산됩니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto; gap:8px">
+      <a class="btn sm ghost" id="csvBtn" href="/api/customers.csv">CSV 내보내기</a>
+      <button class="btn sm primary" id="addBtn">+ 회원 추가</button>
+    </div>
+  </div>
+
+  <section class="stats" id="gradeStats" style="margin-bottom:14px"></section>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:17.5px">이번 달 생일</h3>
+      <span class="small muted" id="bdayNote"></span>
+    </div>
+    <div id="birthdayList" class="small muted">불러오는 중…</div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row wrap" style="gap:8px">
+      <input class="input" id="search" placeholder="이름·연락처·메모로 찾기" style="max-width:260px">
+      <select class="select" id="sort" style="max-width:190px">
+        <option value="recent">최근 방문순</option>
+        <option value="grade">등급 높은 순</option>
+        <option value="visits">방문 많은 순</option>
+        <option value="spend">누적 결제 많은 순</option>
+        <option value="points">포인트 많은 순</option>
+        <option value="birthday">생일 가까운 순</option>
+        <option value="name">이름순</option>
+      </select>
+      <select class="select" id="gradeFilter" style="max-width:160px">
+        <option value="">등급 전체</option>
+      </select>
+      <span class="badge" id="countBadge">0명</span>
+      <span class="small muted" id="criteria"></span>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div id="custList"></div>
+  </div>
+
+  <div class="sendbar" id="sendBar">
+    <span id="selInfo">선택한 회원 없음</span>
+    <button class="btn sm primary" id="smsBtn" disabled>문자 발송 (2단계 예정)</button>
+  </div>
+</main>
+
+<div class="sheet-back" id="back"></div>
+
+<!-- 회원 상세 -->
+<div class="sheet wide" id="custSheet" role="dialog" aria-label="회원 정보">
+  <div class="sheet-head">
+    <h3 id="csTitle">회원 정보</h3>
+    <button class="x" data-close>✕</button>
+  </div>
+  <div class="sheet-body" id="csBody"></div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn primary grow" id="csSave">저장</button>
+    <button class="btn ghost" id="csMerge">합치기</button>
+  </div>
+</div>
+
+<!-- 회원 추가 -->
+<div class="sheet" id="addSheet" role="dialog" aria-label="회원 추가">
+  <div class="sheet-head">
+    <h3>회원 추가</h3>
+    <button class="x" data-close>✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="field"><label for="addName">이름</label><input class="input" id="addName" maxlength="30"></div>
+    <div class="field"><label for="addPhone">연락처</label>
+      <input class="input" id="addPhone" type="tel" inputmode="tel" placeholder="010-0000-0000">
+      <div class="small muted" style="margin-top:4px">같은 번호가 이미 있으면 그 회원에 합쳐집니다.</div></div>
+    <div class="field"><label for="addBirthday">생일 (선택)</label>
+      <input class="input" id="addBirthday" placeholder="1990-03-15 또는 03-15"></div>
+    <div class="field"><label for="addGrade">등급</label>
+      <select class="select" id="addGrade">
+        <option value="">자동 (방문·결제 기준)</option>
+        <option value="REGULAR">단골</option>
+        <option value="VIP">VIP</option>
+      </select></div>
+    <div class="field"><label for="addMemo">메모 (선택)</label>
+      <textarea class="input" id="addMemo" maxlength="500" placeholder="예: 매운맛 좋아함, 단체 예약 문의"></textarea></div>
+    <label class="consent" style="display:flex;gap:8px;align-items:flex-start">
+      <input type="checkbox" id="addConsent" style="width:20px;height:20px;accent-color:var(--brand)">
+      <span>연락처 수집·이용에 동의함 (선택 · 주문 확인·방문 기록·안내) <a href="/privacy" target="_blank">처리방침</a></span>
+    </label>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn primary block" id="addSave">회원 등록</button>
+  </div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/customers.js"></script>
+</body>
+</html>

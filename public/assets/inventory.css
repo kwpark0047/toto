@@ -1,0 +1,9 @@
+/* 재고·재료 화면 */
+.wrow, .srow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.wrow:last-child, .srow:last-child { border-bottom: 0; }
+.wrow .nums { margin-left: auto; font-weight: 800; }
+.rrow { display: grid; grid-template-columns: 1fr 150px 44px; gap: 8px; margin-bottom: 8px; align-items: center; }
+@media (max-width: 560px) { .rrow { grid-template-columns: 1fr 110px 40px; } }
+#logList .table th, #logList .table td { padding: 9px 10px; }
+.badge.red { background: var(--red-soft); color: var(--red); }
+.nums.green { color: #2f7d4f; }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 리뷰</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/reviews.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>리뷰</h1>
+      <p>손님이 주문 완료 후 남긴 별점·한 줄 평가입니다. 숨긴 리뷰는 평균에서 빠지고 목록에는 남습니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <label class="row small" style="gap:6px"><input type="checkbox" id="showHidden" checked> 숨김 포함</label>
+    </div>
+  </div>
+
+  <div class="stats" id="stats" style="margin-bottom:14px"></div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">최근 7일 추이</h3>
+      <span class="small muted">막대 = 건수, 숫자 = 평균 별점</span>
+    </div>
+    <div class="trend" id="trend"></div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div class="row between" style="padding:14px 16px"><h3 style="font-size:18px">리뷰 목록</h3>
+      <span class="badge line" id="countBadge">0건</span></div>
+    <div id="reviewList"></div>
+  </div>
+</main>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/reviews.js"></script>
+</body>
+</html>

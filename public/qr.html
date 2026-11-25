@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · QR·NFC·메뉴판 인쇄</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/qr.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>QR · NFC · 메뉴판 인쇄</h1>
+      <p>테이블마다 QR과 NFC 주소가 자동으로 만들어집니다. 테이블을 추가하면 다음 생성 때 바로 반영됩니다.</p>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row wrap" style="gap:8px">
+      <label class="small" style="font-weight:800;min-width:110px">QR에 넣을 주소</label>
+      <input class="input grow" id="baseInput" style="max-width:420px">
+      <button class="btn sm" id="applyBase">적용</button>
+      <span class="small muted" id="baseHint"></span>
+    </div>
+    <div class="tabs" id="tabs" style="margin-top:12px">
+      <button class="chip on" data-tab="tables">테이블 QR</button>
+      <button class="chip" data-tab="store">매장 공통 QR</button>
+      <button class="chip" data-tab="nfc">NFC 태그</button>
+      <button class="chip" data-tab="print">메뉴판 인쇄</button>
+    </div>
+  </div>
+
+  <!-- 디자인 -->
+  <section class="card pad hidden" id="designCard" style="margin-bottom:14px">
+    <div class="row between" style="margin-bottom:10px">
+      <h3 style="font-size:18px">디자인</h3>
+      <span class="small muted" id="verifyState"></span>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>점 모양</label>
+        <select class="select" id="optDot"><option value="rounded">둥글게</option><option value="square">사각</option></select></div>
+      <div class="field"><label>모서리 눈금</label>
+        <select class="select" id="optEye"><option value="rounded">둥글게</option><option value="square">사각</option></select></div>
+      <div class="field"><label>전경색</label>
+        <div class="row" style="gap:8px"><input type="color" id="optFg" style="width:56px;height:44px;border:1px solid var(--line);border-radius:10px">
+        <input class="input" id="optFgText" style="max-width:120px"></div></div>
+      <div class="field"><label>배경색</label>
+        <div class="row" style="gap:8px"><input type="color" id="optBg" style="width:56px;height:44px;border:1px solid var(--line);border-radius:10px">
+        <input class="input" id="optBgText" style="max-width:120px"></div></div>
+      <div class="field"><label>가운데 배지</label>
+        <select class="select" id="optBadge">
+          <option value="initial">매장 이니셜</option>
+          <option value="logo">올린 이미지</option>
+          <option value="none">없음</option>
+        </select></div>
+      <div class="field"><label>하단 문구</label>
+        <input class="input" id="optCaption" placeholder="auto = 매장 · 테이블 · 찍고 주문하세요"></div>
+    </div>
+    <div class="row wrap" style="gap:8px">
+      <label class="btn sm ghost" style="cursor:pointer">배지 이미지 올리기
+        <input type="file" id="badgeFile" accept="image/png,image/jpeg" class="hidden">
+      </label>
+      <button class="btn sm primary" id="saveDesign">디자인 저장</button>
+      <span class="small muted">스캔이 안 되면 배지를 줄이거나 없앤 QR로 자동 대체합니다.</span>
+    </div>
+  </section>
+
+  <!-- 테이블 QR -->
+  <section id="viewTables">
+    <div class="row between" style="margin-bottom:8px">
+      <span class="small muted" id="tableCount"></span>
+      <button class="btn sm ghost" id="pngAll">PNG 모두 받기</button>
+    </div>
+    <div class="qgrid" id="qgrid"></div>
+  </section>
+
+  <!-- 매장 공통 -->
+  <section id="viewStore" class="hidden">
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:6px">매장 공통 QR</h3>
+      <p class="small muted" style="margin:0 0 12px">입구·계산대에 붙이면 손님이 테이블을 골라 주문합니다. 테이블 번호를 모를 때 쓰세요.</p>
+      <div class="row wrap" style="gap:16px;align-items:flex-start">
+        <img id="storeQr" alt="매장 공통 QR" width="220" height="220" style="border-radius:14px;background:#fff">
+        <div class="grow" style="min-width:220px">
+          <div class="small muted" id="storeUrl"></div>
+          <div class="row wrap" style="gap:8px;margin-top:10px">
+            <a class="btn sm ghost" id="storePng" download="store-qr.png">PNG 저장</a>
+            <a class="btn sm ghost" id="storeSvg" download="store-qr.svg">SVG 저장</a>
+          </div>
+          <p class="small muted" style="margin-top:10px;line-height:1.6">
+            손님은 이 QR로 들어와 테이블을 고른 뒤 주문합니다.<br>
+            테이블에서 바로 주문하게 하려면 테이블별 QR·NFC를 쓰세요.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NFC -->
+  <section id="viewNfc" class="hidden">
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:6px">NFC 태그 URL</h3>
+      <p class="small muted" style="margin:0 0 12px;line-height:1.6">
+        NFC 태그(NDEF 지원 제품)에 아래 주소를 한 번 써 두면, 손님이 태그에 휴대폰을 대는 것만으로 메뉴가 열립니다.<br>
+        태그에 쓰는 방법: <b>NFC Tools</b> 같은 앱에서 ‘URL/URI 쓰기’를 고르고 아래 주소를 붙여 넣으세요.
+        이 시제품은 태그를 직접 읽거나 쓰지 않습니다.
+      </p>
+      <div class="row" style="gap:8px;margin-bottom:10px">
+        <a class="btn sm" id="nfcCsv" download="nfc-urls.csv">목록 CSV로 받기</a>
+        <button class="btn sm ghost" id="nfcPrint">목록 인쇄</button>
+      </div>
+      <div id="nfcList"></div>
+    </div>
+  </section>
+
+  <!-- 인쇄 -->
+  <section id="viewPrint" class="hidden">
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:6px">테이블 메뉴판 인쇄물</h3>
+      <p class="small muted" style="margin:0 0 12px">손님이 ‘메뉴 보고 주문하는 것’임을 바로 알 수 있는 스탠드입니다. 테이블마다 번호·QR·NFC 주소가 자동으로 들어갑니다.</p>
+      <div class="grid2">
+        <div class="field"><label>용지 크기</label>
+          <select class="select" id="printSize">
+            <option value="A6">A6 (105×148mm)</option>
+            <option value="A5" selected>A5 (148×210mm)</option>
+            <option value="A4">A4 (210×297mm)</option>
+            <option value="B4">B4 (250×353mm)</option>
+          </select></div>
+        <div class="field"><label>한 장에</label>
+          <select class="select" id="printLayout">
+            <option value="1" selected>1개씩 (A4·B4는 1개도 가능)</option>
+            <option value="2">2개 (A4·B4)</option>
+            <option value="4">4개 (A4·B4)</option>
+          </select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>큰 제목</label><input class="input" id="stTitle" maxlength="40"></div>
+        <div class="field"><label>부제</label><input class="input" id="stSubtitle" maxlength="60"></div>
+      </div>
+      <div class="field"><label>사용 3단계 (| 로 구분)</label>
+        <input class="input" id="stSteps" maxlength="120" placeholder="1. 카메라로 QR 찍기|2. 메뉴 고르기|3. 장바구니로 주문"></div>
+      <div class="grid2">
+        <div class="field"><label>NFC 안내</label><input class="input" id="stNfc" maxlength="60"></div>
+        <div class="field"><label>하단 안내</label><input class="input" id="stFooter" maxlength="60"></div>
+      </div>
+      <div class="field" style="max-width:220px"><label>강조색</label>
+        <input type="color" id="stAccent" style="width:56px;height:44px;border:1px solid var(--line);border-radius:10px"></div>
+      <div class="row wrap" style="gap:8px">
+        <button class="btn sm primary" id="saveStand">문구 저장</button>
+        <button class="btn sm green" id="openPrint">전체 테이블 인쇄 화면</button>
+        <a class="btn sm" id="pdfBtn" href="#">PDF 내려받기</a>
+      </div>
+      <div style="margin-top:16px">
+        <div class="small muted" style="margin-bottom:6px">미리보기 (첫 번째 테이블)</div>
+        <img id="standPreview" alt="메뉴판 미리보기" style="width:260px;border-radius:10px;border:1px solid var(--line);background:#fff">
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:14px">
+      <h3 style="font-size:18px;margin-bottom:6px">웨이팅 접수 안내물 (매장 앞·입구)</h3>
+      <p class="small muted" style="margin:0 0 12px">크게 붙이는 안내물입니다. 손님이 QR·NFC로 대기 접수 화면(/wait)을 열고 번호표를 받습니다.</p>
+      <div class="field" style="max-width:240px"><label>용지 크기</label>
+        <select class="select" id="waitSize">
+          <option value="B4" selected>B4 (250×353mm) · 권장</option>
+          <option value="A3">A3 (297×420mm)</option>
+        </select></div>
+      <div class="row wrap" style="gap:8px">
+        <a class="btn sm" id="waitPdfLink" href="#">PDF 내려받기</a>
+        <button class="btn sm green" id="waitPrintOpen">인쇄 화면</button>
+      </div>
+      <div style="margin-top:14px">
+        <img id="waitPreview" alt="웨이팅 안내물 미리보기" style="width:260px;border-radius:10px;border:1px solid var(--line);background:#fff">
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/qr.js"></script>
+</body>
+</html>

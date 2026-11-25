@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 웨이팅 관리</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/customers.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>웨이팅 관리</h1>
+      <p>호출하면 손님 화면에 알림이 갑니다(브라우저 알림). 문자·카카오는 대행사 계정 연결 전까지 기록만 남습니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <a class="btn sm ghost" href="/wait/board" target="_blank">대기 보드 열기</a>
+      <button class="btn sm" id="refreshBtn">↻ 새로고침</button>
+    </div>
+  </div>
+
+  <section class="stats" id="stats"></section>
+
+  <div class="card pad" style="margin:14px 0">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">대기 목록</h3>
+      <span class="small muted" id="estimate"></span>
+    </div>
+    <div id="waitList"></div>
+  </div>
+
+  <div class="card pad">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">알림</h3>
+      <span class="small muted" id="notifySummary"></span>
+    </div>
+    <div id="notifyHistory" class="small muted">불러오는 중…</div>
+  </div>
+</main>
+
+<div class="sheet-back" id="back"></div>
+<div class="sheet" id="seatSheet" role="dialog" aria-label="입장 처리">
+  <div class="sheet-head">
+    <h3 id="seatTitle">입장 처리</h3>
+    <button class="x" data-close>✕</button>
+  </div>
+  <div class="sheet-body">
+    <p class="small muted" id="seatInfo"></p>
+    <div class="field"><label for="seatTable">테이블 선택 (선택)</label>
+      <select class="select" id="seatTable"></select></div>
+    <p class="small muted">좌석 수·인원을 자동으로 맞춰 주지는 않습니다. 화면을 보고 직접 골라 주세요.</p>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn primary grow" id="seatOk">입장 처리</button>
+    <button class="btn ghost" data-close>닫기</button>
+  </div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/wait-admin.js"></script>
+</body>
+</html>

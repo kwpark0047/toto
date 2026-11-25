@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>맛집 · 인쇄</title>
+<link rel="stylesheet" href="/assets/base.css">
+<style>
+  body { background: #e9e2d8; }
+  .bar { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--line);
+         padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .bar .grow { flex: 1; }
+  #sheets { padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .sheet { background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.12); position: relative; overflow: hidden; }
+  .sheet img { position: absolute; object-fit: contain; }
+  .hint { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { background: #fff; }
+    .bar { display: none; }
+    #sheets { padding: 0; gap: 0; }
+    .sheet { box-shadow: none; page-break-after: always; break-after: page; }
+    .sheet:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>인쇄 미리보기</b>
+  <span id="meta" class="hint"></span>
+  <span class="grow"></span>
+  <a class="btn sm ghost" id="pdf" href="#">PDF 내려받기</a>
+  <button class="btn sm primary" id="printBtn">인쇄</button>
+  <a class="btn sm ghost" href="/qr">QR 화면으로</a>
+</div>
+<div id="sheets"></div>
+<script src="/assets/util.js"></script>
+<script src="/assets/print.js"></script>
+</body>
+</html>

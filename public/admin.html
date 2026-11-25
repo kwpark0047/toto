@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 사장님 콘솔 — 주문</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>오늘 주문</h1>
+      <p id="todayLabel">–</p>
+    </div>
+    <div class="row" style="margin-left:auto; gap:8px">
+      <span class="badge line" id="soundBadge">🔔 알림 켜짐</span>
+      <button class="btn sm" id="refreshBtn">↻ 새로고침</button>
+    </div>
+  </div>
+
+  <div class="alert hidden" id="setupTip"></div>
+
+  <section class="stats" id="stats"></section>
+
+  <div class="alert hidden" id="unpaidAlert"></div>
+
+  <div class="console-grid">
+    <section>
+      <div class="row between" style="margin:16px 0 10px">
+        <div class="row" id="filters">
+          <button class="chip on" data-f="all">전체</button>
+          <button class="chip" data-f="unpaid">결제 전</button>
+          <button class="chip" data-f="active">진행 중</button>
+          <button class="chip" data-f="done">완료</button>
+        </div>
+      </div>
+      <div id="orderList"></div>
+    </section>
+
+    <aside>
+      <div class="card pad" style="margin-top:16px">
+        <div class="row between" style="margin-bottom:10px">
+          <h3 style="font-size:18px">테이블 현황</h3>
+          <a class="small" href="/tables" style="color:var(--brand);font-weight:800">관리 →</a>
+        </div>
+        <div class="tables" id="tables"></div>
+      </div>
+
+      <div class="card pad" style="margin-top:12px" id="callCard">
+        <div class="row between" style="margin-bottom:8px">
+          <h3 style="font-size:18px">직원 호출</h3>
+          <span class="badge" id="callBadge">0</span>
+        </div>
+        <div id="callsBox" class="small muted">호출 없음</div>
+      </div>
+
+      <div class="card pad" style="margin-top:12px" id="waitCard">
+        <div class="row between" style="margin-bottom:8px">
+          <h3 style="font-size:18px">웨이팅</h3>
+          <a class="small" href="/wait/admin" style="color:var(--brand);font-weight:800">대기 관리 →</a>
+        </div>
+        <div id="waitSummary" class="small muted">불러오는 중…</div>
+      </div>
+
+      <div class="card pad" style="margin-top:12px">
+        <h3 style="font-size:18px;margin-bottom:10px">오늘 잘 팔린 메뉴</h3>
+        <div id="topItems" class="top-items"></div>
+      </div>
+      <p class="small muted" style="margin-top:12px;line-height:1.5">
+        시제품용 콘솔입니다. 실제 결제(PG)·문자 발송은 하지 않습니다.
+      </p>
+    </aside>
+  </div>
+</main>
+
+<div class="sheet-back" id="back"></div>
+<div class="sheet" id="orderSheet" role="dialog" aria-label="주문 상세">
+  <div class="sheet-head">
+    <h3 id="osTitle">주문 상세</h3>
+    <button class="x" data-close>✕</button>
+  </div>
+  <div class="sheet-body" id="osBody"></div>
+  <div class="sheet-foot row" id="osFoot" style="gap:8px"></div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/admin.js"></script>
+</body>
+</html>

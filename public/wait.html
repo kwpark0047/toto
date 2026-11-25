@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 대기 접수</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/wait.css">
+</head>
+<body>
+<header class="whead">
+  <span class="wlogo" id="wlogo">맛</span>
+  <div class="grow">
+    <b id="wstore">맛집</b>
+    <div class="small muted" id="wsub">웨이팅 접수</div>
+  </div>
+  <a class="btn sm ghost" href="/wait/board">매장 보드</a>
+</header>
+
+<main class="wwrap">
+  <!-- 1) 접수 -->
+  <section id="formView">
+    <div class="card pad">
+      <h1 class="wtitle">대기 접수</h1>
+      <p class="small muted" style="margin:4px 0 16px">이름과 전화번호를 남기면 대기번호를 드립니다. 입장 순서가 되면 이 화면에서 알려 드려요.</p>
+      <div class="field">
+        <label for="wName">이름</label>
+        <input class="input" id="wName" maxlength="20" placeholder="홍길동" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="wPhone">전화번호 <span style="color:var(--brand)">*</span></label>
+        <input class="input" id="wPhone" type="tel" inputmode="tel" placeholder="010-1234-5678" autocomplete="tel">
+        <div class="small muted" style="margin-top:4px">대기 확인·호출 안내에만 씁니다.</div>
+      </div>
+      <div class="field">
+        <label for="wParty">인원</label>
+        <input class="input" id="wParty" type="number" min="1" max="20" value="2" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="wNote">요청 (선택)</label>
+        <input class="input" id="wNote" maxlength="80" placeholder="예: 유아 의자 필요">
+      </div>
+      <label class="agree">
+        <input type="checkbox" id="wConsent">
+        <span>전화번호 수집·이용에 동의합니다 (필수 · 대기 처리 목적, 입장·취소 후 하루가 지나면 자동 삭제) <a href="/privacy" target="_blank">처리방침</a></span>
+      </label>
+      <button class="btn primary block lg" id="submitBtn" style="margin-top:14px">대기번호 받기</button>
+      <div class="msg" id="formMsg"></div>
+      <p class="small muted" style="margin-top:14px;line-height:1.6">
+        · 브라우저 알림은 탭이 열려 있거나 백그라운드 탭일 때 옵니다. 브라우저를 완전히 닫으면 오지 않습니다.<br>
+        · 아이폰은 <b>홈 화면에 추가</b>한 뒤 열어야 알림을 받을 수 있습니다.
+      </p>
+      <p class="small" style="margin-top:10px"><a href="#" id="findLink" style="color:var(--brand);font-weight:800">전화번호로 내 대기 찾기</a></p>
+    </div>
+
+    <div class="card pad hidden" id="findBox" style="margin-top:12px">
+      <h2 class="wtitle" style="font-size:20px">내 대기 찾기</h2>
+      <p class="small muted" style="margin:4px 0 12px">접수할 때 쓴 전화번호를 넣어 주세요.</p>
+      <div class="row" style="gap:8px">
+        <input class="input grow" id="findPhone" type="tel" inputmode="tel" placeholder="010-1234-5678">
+        <button class="btn sm primary" id="findBtn">찾기</button>
+      </div>
+      <div class="msg" id="findMsg"></div>
+    </div>
+  </section>
+
+  <!-- 2) 번호표 -->
+  <section id="ticketView" class="hidden">
+    <div class="ticket card">
+      <div class="tk-top">
+        <span class="tk-store" id="tkStore">맛집</span>
+        <span class="tk-label">대기번호</span>
+      </div>
+      <div class="tk-no" id="tkNo">A-1</div>
+      <div class="tk-line" id="tkLine">앞에 3팀 · 약 25분</div>
+      <div class="tk-status" id="tkStatus">대기 중</div>
+      <div class="tk-meta" id="tkMeta"></div>
+    </div>
+
+    <div class="card pad" style="margin-top:12px">
+      <div class="row between" style="gap:8px">
+        <div>
+          <b>브라우저 알림</b>
+          <div class="small muted" id="notifyState">내 앞 2팀·호출 시 알려 드립니다</div>
+        </div>
+        <button class="btn sm soft" id="notifyBtn">알림 받기</button>
+      </div>
+      <p class="small muted" style="margin:10px 0 0;line-height:1.6">
+        알림은 이 탭이 열려 있을 때 옵니다. 브라우저를 완전히 닫으면 오지 않습니다.<br>
+        아이폰은 홈 화면에 추가한 뒤 열어 주세요.
+      </p>
+    </div>
+
+    <div class="card pad" style="margin-top:12px">
+      <b class="small">내 대기 링크</b>
+      <p class="small muted" style="margin:4px 0 8px">이 링크를 저장해 두면 나중에 다시 열어 볼 수 있습니다.</p>
+      <div class="row" style="gap:8px">
+        <input class="input grow small" id="tkLink" readonly>
+        <button class="btn sm" id="copyBtn">복사</button>
+      </div>
+    </div>
+
+    <div class="row" style="gap:8px;margin-top:12px">
+      <a class="btn primary grow" id="preorderBtn" href="/">🍽️ 미리 주문하기</a>
+      <a class="btn grow" href="/wait/board">매장 보드 보기</a>
+      <button class="btn ghost" id="anotherBtn">다른 번호 접수</button>
+    </div>
+    <p class="small muted" style="margin-top:14px;line-height:1.6">
+      화면은 10초마다 자동으로 새로 고칩니다. 순서가 되면 카운터에서 불러 드립니다.
+    </p>
+  </section>
+</main>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/wait.js"></script>
+</body>
+</html>

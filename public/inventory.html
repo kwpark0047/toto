@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 재고·재료</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/inventory.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>재고·재료</h1>
+      <p>메뉴별 소모량을 정해 두면 <b>현금 결제 확인 때</b> 재료가 자동으로 빠집니다. 자동 발주·외부 전송은 하지 않습니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <button class="btn sm ghost" id="recipeJump">레시피 설정</button>
+      <button class="btn sm primary" id="addBtn">+ 재료 등록</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats" style="margin-bottom:14px"></div>
+
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:8px">⚠️ 안전재고 미만</h3>
+      <div id="warnList"></div>
+    </div>
+    <div class="card pad">
+      <h3 style="font-size:18px;margin-bottom:8px">🍽 품절 제안</h3>
+      <p class="small muted" style="margin:0 0 8px">재고가 모자란 재료를 쓰는 메뉴입니다. 눌러서 품절로 바꾸면 주문이 막힙니다.</p>
+      <div id="suggestList"></div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden;margin-bottom:14px">
+    <div class="row between" style="padding:14px 16px">
+      <h3 style="font-size:18px">재료 목록</h3>
+      <span class="badge line" id="ingCount">0개</span>
+    </div>
+    <div id="ingList"></div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px" id="recipeCard">
+    <div class="row between" style="margin-bottom:10px">
+      <h3 style="font-size:18px">레시피 (메뉴별 소모량)</h3>
+      <select class="select" id="menuPick" style="max-width:280px"></select>
+    </div>
+    <p class="small muted" style="margin:0 0 10px">한 그릇 만들 때 쓰는 재료 양을 넣으세요. 예: 김밥 1줄 = 쌀 200g, 김 1장.</p>
+    <div id="recipeRows"></div>
+    <div class="row" style="gap:8px;margin-top:10px">
+      <button class="btn sm ghost" id="addRow">+ 재료 추가</button>
+      <button class="btn sm primary" id="saveRecipe">레시피 저장</button>
+    </div>
+    <div id="recipeCurrent" class="small muted" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div class="row between" style="padding:14px 16px">
+      <h3 style="font-size:18px">입출고 기록</h3>
+      <span class="small muted">최근 60건</span>
+    </div>
+    <div id="logList"></div>
+  </div>
+</main>
+
+<div class="sheet-back" id="back"></div>
+
+<!-- 재료 추가/수정 -->
+<div class="sheet" id="ingSheet" role="dialog" aria-label="재료">
+  <div class="sheet-head"><h3 id="ingTitle">재료 등록</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <div class="grid2">
+      <div class="field"><label for="ingName">이름</label><input class="input" id="ingName" maxlength="40" placeholder="예: 쌀"></div>
+      <div class="field"><label for="ingUnit">단위</label>
+        <select class="select" id="ingUnit">
+          <option>개</option><option>g</option><option>kg</option><option>ml</option><option>L</option>
+          <option>봉</option><option>판</option><option>모</option><option>장</option><option>팩</option>
+        </select>
+      </div>
+      <div class="field"><label for="ingStock">현재고</label><input class="input" id="ingStock" type="number" step="0.1" min="0" value="0"></div>
+      <div class="field"><label for="ingSafety">안전재고</label><input class="input" id="ingSafety" type="number" step="0.1" min="0" value="0">
+        <div class="small muted" style="margin-top:4px">이보다 적으면 경고합니다.</div>
+      </div>
+    </div>
+    <div class="field"><label for="ingMemo">메모 (선택)</label><input class="input" id="ingMemo" maxlength="200" placeholder="예: 거래처 이름"></div>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn primary grow" id="ingSave">저장</button>
+    <button class="btn ghost hidden" id="ingDelete">삭제</button>
+  </div>
+</div>
+
+<!-- 입고/조정 -->
+<div class="sheet" id="moveSheet" role="dialog" aria-label="입고·조정">
+  <div class="sheet-head"><h3 id="moveTitle">입고</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <p class="small muted" id="moveHint">–</p>
+    <div class="field"><label for="moveQty" id="moveLabel">수량</label>
+      <input class="input" id="moveQty" type="number" step="0.1"></div>
+    <div class="field"><label for="moveMemo">메모 (선택)</label>
+      <input class="input" id="moveMemo" maxlength="200" placeholder="예: ○○마트 입고, 실사">
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn primary" id="moveSave" style="width:100%">저장</button></div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/inventory.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 내 계정</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/account.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page" style="max-width:760px">
+  <div class="page-head">
+    <div><h1>내 계정</h1><p>비밀번호는 서버에 해시로만 저장됩니다. 임시 비밀번호로 로그인했다면 여기서 바꿔 주세요.</p></div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="font-size:18px;margin-bottom:8px">내 정보</h3>
+    <div id="who" class="small muted">불러오는 중…</div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="font-size:18px;margin-bottom:8px">비밀번호 변경</h3>
+    <div class="grid2">
+      <div class="field"><label for="curPw">현재 비밀번호</label><input class="input" id="curPw" type="password" autocomplete="current-password"></div>
+      <div class="field"><label for="newPw">새 비밀번호</label><input class="input" id="newPw" type="password" autocomplete="new-password" placeholder="4자 이상">
+        <div class="small muted" style="margin-top:4px">바꾸면 다른 기기의 로그인은 끊깁니다.</div></div>
+    </div>
+    <button class="btn primary" id="pwSave" style="margin-top:10px">비밀번호 바꾸기</button>
+  </div>
+
+  <div class="card pad">
+    <div class="row between" style="margin-bottom:8px"><h3 style="font-size:18px">로그인한 기기</h3>
+      <span class="small muted">최근 사용 순</span></div>
+    <div id="sessions" class="small muted">불러오는 중…</div>
+  </div>
+</main>
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/account.js"></script>
+</body>
+</html>

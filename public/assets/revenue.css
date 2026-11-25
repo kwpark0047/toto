@@ -1,0 +1,17 @@
+/* 매출·정산 화면 */
+.tblwrap { max-height: 460px; overflow: auto; }
+.bar { height: 6px; border-radius: 6px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--brand); border-radius: 6px; }
+.hourlist { display: flex; flex-direction: column; gap: 8px; }
+.hrow { display: grid; grid-template-columns: 46px 1fr 128px; align-items: center; gap: 8px; }
+.hrow .hl { font-weight: 800; color: var(--muted); font-size: 13.5px; }
+.hrow .hb { height: 14px; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
+.hrow .hb i { display: block; height: 100%; background: #e8a13a; }
+.hrow .hv { text-align: right; font-weight: 800; font-size: 14px; }
+.catrow { display: grid; grid-template-columns: 84px 1fr 120px; align-items: center; gap: 8px; padding: 6px 0; }
+.catrow .cn { font-weight: 800; }
+.catrow .cb { height: 14px; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
+.catrow .cb i { display: block; height: 100%; background: #74a58a; }
+.catrow .cv { text-align: right; font-weight: 800; font-size: 14px; }
+.rank { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px;
+  background: var(--surface-2); font-size: 12PX; font-weight: 900; }

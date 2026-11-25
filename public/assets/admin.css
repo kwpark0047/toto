@@ -1,0 +1,73 @@
+/* 사장님 콘솔 */
+.console-grid { display: grid; grid-template-columns: 1fr 330px; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .console-grid { grid-template-columns: 1fr; } }
+
+.alert {
+  margin-top: 12px; border-radius: 14px; padding: 12px 16px; font-weight: 800;
+  background: var(--red-soft); color: var(--red); border: 1.5px solid #f7caca;
+  display: flex; align-items: center; gap: 8px;
+}
+.alert .btn { margin-left: auto; }
+
+.order-list { display: flex; flex-direction: column; gap: 10px; }
+.order {
+  background: #fff; border-radius: 16px; border: 1.5px solid var(--line);
+  padding: 13px 15px; box-shadow: 0 1px 6px rgba(74,48,22,.04);
+}
+.order.new { border-color: #ffc9a8; box-shadow: 0 0 0 3px #fff1e8; animation: pop .5s ease; }
+@keyframes pop { from { transform: scale(.99); opacity: .6; } to { transform: none; opacity: 1; } }
+.order .hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.order .no { font-size: 18px; font-weight: 900; letter-spacing: -.02em; }
+.order .meta { font-size: 13px; color: var(--muted); }
+.order .items { margin: 8px 0 10px; font-size: 15.5px; line-height: 1.55; color: var(--ink-2); }
+.order .items b { font-weight: 800; color: var(--ink); }
+.order .ft { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 10px; }
+.order .total { font-size: 18px; font-weight: 900; margin-right: 2px; }
+.order .ft .btn { min-height: 40px; padding: 0 14px; font-size: 14.5px; }
+.order .note { font-size: 13.5px; color: var(--amber); background: var(--amber-soft); border-radius: 8px; padding: 6px 10px; margin-top: 6px; }
+
+.tables { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tile {
+  border-radius: 12px; padding: 9px 8px; border: 1.5px solid var(--line);
+  background: #fff; min-height: 84px; display: flex; flex-direction: column; gap: 2px;
+}
+.tile .tno { font-size: 17px; font-weight: 900; }
+.tile .tst { font-size: 11.5px; font-weight: 800; color: var(--muted); }
+.tile .tmenu { font-size: 11px; color: var(--muted); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile.NEW { border-color: var(--brand); background: var(--brand-soft); }
+.tile.NEW .tst { color: var(--brand); }
+.tile.ACCEPTED, .tile.COOKING { border-color: #f3ce8a; background: var(--amber-soft); }
+.tile.ACCEPTED .tst, .tile.COOKING .tst { color: var(--amber); }
+.tile.UNPAID { border-color: #f3b4b4; background: var(--red-soft); }
+.tile.UNPAID .tst { color: var(--red); }
+.tile.IDLE { opacity: .62; }
+
+.top-items { display: flex; flex-direction: column; gap: 8px; }
+.top-items .ti { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.top-items .ti .rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-2); display: grid; place-items: center; font-size: 12px; font-weight: 900; }
+.top-items .ti .qty { margin-left: auto; font-weight: 800; color: var(--muted); }
+
+.os-items { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.os-items .li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.os-items .li:last-child { border-bottom: 0; }
+.os-kv { display: grid; grid-template-columns: 92px 1fr; gap: 6px 10px; font-size: 15px; margin: 4px 0 14px; }
+.os-kv .k { color: var(--muted); font-weight: 700; }
+@media (max-width: 720px) {
+  .tables { grid-template-columns: repeat(4, 1fr); }
+  .order .no { font-size: 17px; }
+  .order .ft .btn { flex: 1 1 auto; }
+}
+
+/* ---------- 테이블 타일(비활성·좌석·머문 시간) ---------- */
+.tile.off { opacity: .45; background: #f4efe9; border-style: dashed; }
+.tile { min-height: 78px; }
+
+/* ---------- 영수증 미리보기 ---------- */
+.rcp { background: #fffdf9; border: 1px dashed #d8c7b4; border-radius: 12px; padding: 14px; }
+.rcp-name { font-size: 20px; font-weight: 900; text-align: center; }
+.rcp-sub { text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.rcp hr { border: 0; border-top: 1px dashed #d8c7b4; margin: 10px 0; }
+.rcp .row { gap: 8px; margin: 3px 0; }
+
+/* 주문 카드의 포인트 배지가 줄바꿈되지 않게 */
+.order .ft { flex-wrap: wrap; }

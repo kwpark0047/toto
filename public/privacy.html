@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>맛집 · 개인정보 처리방침(초안)</title>
+<link rel="stylesheet" href="/assets/base.css">
+<style>
+  main { max-width: 760px; margin: 0 auto; padding: 26px 18px 70px; }
+  h1 { font-size: 26px; } h2 { font-size: 19px; margin: 22px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin-top: 8px; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); font-size: 13.5px; }
+  .note { background: var(--amber-soft); border: 1px solid #f3ce8a; border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.6; }
+  p, li { line-height: 1.65; }
+</style>
+</head>
+<body>
+<main>
+  <p class="small"><a href="/" style="color:var(--brand);font-weight:800">← 매장으로</a></p>
+  <h1>개인정보 처리방침 <span class="badge amber">초안</span></h1>
+  <p class="note">이 문서는 시제품용 <b>초안</b>입니다. 실제 공시·시행 전에 법률 검토가 필요합니다.</p>
+
+  <h2>1. 수집하는 정보</h2>
+  <table>
+    <tr><th>상황</th><th>항목</th><th>목적</th><th>보관</th></tr>
+    <tr><td>테이블 주문</td><td>이름, 연락처, 요청사항(선택)</td><td>주문 확인·조리 전달·방문 기록</td><td>매장 운영 기간</td></tr>
+    <tr><td>회원 등록</td><td>이름, 연락처, 생일·메모(선택)</td><td>방문 기록·포인트·안내</td><td>회원 탈퇴 시까지</td></tr>
+    <tr><td>웨이팅 접수</td><td>이름, 전화번호, 인원</td><td>대기 순서 안내·호출</td><td>입장·취소 후 24시간 뒤 자동 삭제</td></tr>
+    <tr><td>현금영수증 요청</td><td>휴대폰번호 또는 사업자번호</td><td>발급 요청 보관(발급 연동 없음)</td><td>매장 운영 기간</td></tr>
+  <tr><td>예약</td><td>이름, 연락처, 인원, 요청 메모</td><td>예약 확인·안내</td><td>예약 처리 후 매장이 정리할 때까지(자동 삭제 없음)</td></tr>
+  <tr><td>리뷰</td><td>별점, 한 줄 평가(이름·연락처 없음)</td><td>서비스 개선</td><td>매장 운영 기간</td></tr>
+    <tr><td>직원 계정</td><td>이름, 연락처, 아이디, 출퇴근</td><td>근태·권한 관리</td><td>근로 관계 종료 후 법정 기간</td></tr>
+  </table>
+
+  <h2>2. 이용과 보관</h2>
+  <ul>
+    <li>수집한 정보는 위 목적 외로 쓰지 않습니다.</li>
+    <li>문자·카카오 알림은 수신 동의한 대상에게만, 야간(21~08시)에는 보내지 않습니다.</li>
+    <li>웨이팅 정보는 입장·취소 후 24시간이 지나면 이름·전화번호를 지웁니다.</li>
+    <li>외부로 전송·판매하지 않습니다. 데이터는 매장 PC의 <code>data/mangjip.db</code> 한 파일에 저장됩니다.</li>
+    <li>여러 매장을 쓰는 경우 매장별로 분리 저장되며, 한 매장의 직원이 다른 매장 고객 정보를 보지 못합니다.</li>
+    <li>로그인하지 않은 손님에게 주문 조회는 메뉴·상태만 보여 주고 이름·연락처는 돌려주지 않습니다.</li>
+  </ul>
+
+  <h2>3. 파기</h2>
+  <p>목적이 끝나거나 동의를 철회하면 지체 없이 파기합니다. 백업도 최근 7개만 보관하고 오래된 것부터 자동 삭제합니다(백업에는 모든 매장 데이터가 들어갑니다).</p>
+
+  <h2>4. 이용자 권리</h2>
+  <p>매장에 요청하면 본인 정보의 열람·정정·삭제를 할 수 있고, 동의는 언제든 철회할 수 있습니다.</p>
+
+  <h2>5. 문의</h2>
+  <p>매장 대표 전화·개인정보 보호 책임자는 매장 설정에서 입력한 값으로 안내합니다.</p>
+</main>
+</body>
+</html>

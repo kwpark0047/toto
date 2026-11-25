@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 테이블을 골라 주문</title>
+<link rel="stylesheet" href="/assets/base.css">
+<style>
+  body { background: radial-gradient(1200px 500px at 50% -10%, #ffe9db 0%, #fbf7f2 55%); }
+  .hero { text-align: center; padding: 40px 16px 6px; }
+  .hero .logo { width: 74px; height: 74px; border-radius: 24px; background: var(--brand); color: #fff;
+                display: grid; place-items: center; font-size: 38px; font-weight: 900; margin: 0 auto 14px;
+                box-shadow: 0 10px 24px rgba(217,72,15,.25); }
+  .hero h1 { font-size: 30px; }
+  .hero p { color: var(--muted); margin: 8px 0 0; font-size: 16px; }
+  .pick { max-width: 720px; margin: 22px auto 0; padding: 0 16px; }
+  .tables-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 10px; }
+  .tbtn { display: block; text-decoration: none; background: #fff; border: 1.5px solid var(--line);
+          border-radius: 16px; padding: 16px 10px; text-align: center; box-shadow: var(--shadow); }
+  .tbtn b { display: block; font-size: 22px; font-weight: 900; }
+  .tbtn span { font-size: 12.5px; color: var(--muted); }
+  .tbtn:active { transform: scale(.98); }
+  .manual { display: flex; gap: 8px; margin-top: 14px; }
+  .foot { text-align: center; color: #a08d7d; font-size: 13px; padding: 28px 16px 40px; line-height: 1.6; }
+  .foot a { color: var(--brand); font-weight: 800; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="logo" id="logo">맛</div>
+  <h1 id="storeName">맛집</h1>
+  <p id="storeLine">테이블을 고르고 메뉴를 주문하세요</p>
+</div>
+
+<div class="pick">
+  <div class="card pad">
+    <b style="font-size:18px">어느 테이블에 앉으셨나요?</b>
+    <p class="small muted" style="margin:4px 0 0">테이블 번호를 누르면 메뉴가 열립니다.</p>
+    <div class="tables-row" id="tableRow">불러오는 중…</div>
+    <div class="manual">
+      <input class="input grow" id="manualCode" placeholder="테이블 번호를 모르면 입력 (예: 3)" inputmode="numeric">
+      <button class="btn sm primary" id="manualGo">열기</button>
+    </div>
+    <p class="small muted" style="margin:12px 0 0" id="hoursLine"></p>
+  </div>
+</div>
+
+<p class="foot">
+  <span id="footNote">QR을 찍거나 NFC에 대면 이 화면이 열립니다.</span><br>
+  <a href="/wait">웨이팅 접수</a> · <a href="/login">사장님 로그인</a>
+</p>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+/* 손님 예약 신청 화면 */
+.rs-head { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
+.rs-head .logo { width: 52px; height: 52px; border-radius: 16px; background: var(--brand); color: #fff;
+  display: grid; place-items: center; font-size: 26px; font-weight: 900; }
+.rs-head h1 { font-size: 24px; }
+.rs-head p { margin-top: 2px; }

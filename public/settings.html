@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 매장 설정</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>매장 설정</h1>
+      <p>기본 정보만 있어도 주문·QR·주방은 그대로 동작합니다. 필요한 것만 하나씩 채워 주세요.</p>
+    </div>
+  </div>
+
+  <div class="alert hidden" id="setupNote"></div>
+
+  <!-- 기본 정보 -->
+  <section class="card pad" style="margin-bottom:14px">
+    <h2 style="font-size:19px;margin-bottom:4px">기본 정보</h2>
+    <p class="small muted" style="margin:0 0 14px">매장 이름은 고객 화면·QR·영수증에 그대로 나옵니다.</p>
+
+    <div class="grid2">
+      <div class="field">
+        <label for="storeName">매장 이름</label>
+        <input class="input" id="storeName" maxlength="40" placeholder="맛집">
+      </div>
+      <div class="field">
+        <label for="storeTagline">한 줄 소개 (선택)</label>
+        <input class="input" id="storeTagline" maxlength="80" placeholder="예: 김포 운양동 · 한식·분식">
+      </div>
+    </div>
+    <div class="row wrap" style="gap:8px">
+      <button class="btn sm primary" id="saveBasic">저장</button>
+      <span class="small muted" id="basicState"></span>
+    </div>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+
+    <h3 style="font-size:16.5px;margin-bottom:8px">계정</h3>
+    <div class="grid2">
+      <div class="field">
+        <label for="username">아이디</label>
+        <input class="input" id="username" autocapitalize="none" maxlength="30">
+      </div>
+      <div class="field">
+        <label for="accountName">표시 이름</label>
+        <input class="input" id="accountName" maxlength="30">
+      </div>
+    </div>
+    <div class="row wrap" style="gap:8px">
+      <button class="btn sm" id="saveAccount">아이디·이름 저장</button>
+    </div>
+
+    <div style="margin-top:16px">
+      <h3 style="font-size:16.5px;margin-bottom:8px">비밀번호 변경</h3>
+      <div class="grid2">
+        <div class="field">
+          <label for="pwCurrent">현재 비밀번호</label>
+          <input class="input" id="pwCurrent" type="password" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="pwNew">새 비밀번호</label>
+          <input class="input" id="pwNew" type="password" autocomplete="new-password" placeholder="4자 이상">
+        </div>
+      </div>
+      <div class="row wrap" style="gap:8px">
+        <button class="btn sm" id="savePw">비밀번호 바꾸기</button>
+        <span class="small muted">바꾸면 이 기기 외의 로그인은 끊깁니다.</span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <h3 style="font-size:16.5px;margin-bottom:8px">로그인한 기기</h3>
+      <div id="sessions" class="small muted">불러오는 중…</div>
+    </div>
+  </section>
+
+  <!-- 접이식: 사업자 정보 -->
+  <section class="acc" data-card="biz">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>사업자 정보</h3>
+        <div class="sub" id="bizSub">사업자등록번호·대표자·주소·전화</div>
+      </div>
+      <button class="btn sm soft" data-open>추가하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">영수증과 QR 인쇄물에 표시됩니다. 지금은 비워 두어도 주문·QR·주방은 그대로 동작합니다.<br>
+        사업자등록번호는 형식만 확인하며 진위 확인은 하지 않습니다(운영 시 필요).</p>
+      <div class="grid2">
+        <div class="field"><label for="businessNo">사업자등록번호</label>
+          <input class="input" id="businessNo" placeholder="000-00-00000" inputmode="numeric"></div>
+        <div class="field"><label for="ownerName">대표자명</label>
+          <input class="input" id="ownerName" maxlength="40"></div>
+        <div class="field"><label for="address">주소</label>
+          <input class="input" id="address" maxlength="120"></div>
+        <div class="field"><label for="phone">대표 전화</label>
+          <input class="input" id="phone" maxlength="30" placeholder="031-000-0000"></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="saveBiz">저장</button>
+        <span class="small muted" id="bizState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 영업시간·안내 -->
+  <section class="acc" data-card="hours">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>영업시간·안내 문구</h3>
+        <div class="sub" id="hoursSub">고객 화면과 영수증 하단에 표시</div>
+      </div>
+      <button class="btn sm soft" data-open>추가하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">비워 두면 표시하지 않습니다. 결제 안내는 기본 문구로 대신 나갑니다.</p>
+      <div class="field"><label for="hours">영업시간</label>
+        <input class="input" id="hours" maxlength="120" placeholder="예: 매일 10:00~21:00 (브레이크 15:00~17:00)"></div>
+      <div class="field"><label for="paymentNote">결제 안내 문구</label>
+        <input class="input" id="paymentNote" maxlength="160" placeholder="예: 현금 결제 · 계산대에서 결제해 주세요"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="saveHours">저장</button>
+        <span class="small muted" id="hoursState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 포인트·등급 -->
+  <section class="acc" data-card="points">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>포인트 적립률·등급 기준</h3>
+        <div class="sub" id="pointsSub">결제 확인 시 자동 적립</div>
+      </div>
+      <button class="btn sm soft" data-open>변경하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">바꾼 적립률은 <b>다음 결제 확인부터</b> 적용됩니다. 이미 적립된 포인트는 그대로 남습니다.</p>
+      <div class="field" style="max-width:240px"><label for="pointsRate">적립률 (%)</label>
+        <input class="input" id="pointsRate" type="number" min="0" max="10" step="0.1" inputmode="decimal"></div>
+      <div id="gradeBox"></div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm primary" id="savePoints">저장</button>
+        <span class="small muted" id="pointsState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 알림 -->
+  <section class="acc" data-card="notify">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>알림 설정</h3>
+        <div class="sub" id="notifySub">브라우저 알림 · 문자 · 카카오</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">브라우저 알림은 지금 바로 동작합니다. 문자·카카오는 대행사 계정을 연결해야 실제로 나갑니다(지금은 미연결).</p>
+      <div id="channelBox"></div>
+      <h4 style="font-size:15.5px;margin:16px 0 8px">상황별 문구</h4>
+      <div id="tplBox"></div>
+      <div class="row wrap" style="gap:8px;margin-top:10px">
+        <button class="btn sm primary" id="saveNotify">저장</button>
+        <button class="btn sm ghost" id="previewNotify">미리보기 보내기(기록만)</button>
+        <span class="small muted" id="notifyState"></span>
+      </div>
+      <h4 style="font-size:15.5px;margin:18px 0 8px">오늘 알림</h4>
+      <div id="notifySummary" class="small muted">불러오는 중…</div>
+      <div id="notifyHistory" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- 접이식: 데이터 백업 -->
+  <section class="acc" data-card="backup">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>데이터 백업·복원</h3>
+        <div class="sub" id="backupSub">주문·메뉴·회원·직원 데이터</div>
+      </div>
+      <button class="btn sm soft" data-open>열기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">지금 DB를 파일로 내려받거나, 서버가 매일 자동으로 만드는 백업(최근 7개)을 확인할 수 있습니다.<br>
+        복원은 되돌리기 어려우니 확인 문구를 입력해야 실행됩니다.</p>
+      <div class="row wrap" style="gap:8px">
+        <a class="btn sm ghost" id="backupDownload" href="/api/backup/download">DB 파일 내려받기</a>
+        <button class="btn sm primary" id="backupNow">지금 백업 만들기</button>
+      </div>
+      <div id="backupList" style="margin-top:12px" class="small muted">불러오는 중…</div>
+      <div class="row wrap" style="gap:8px;margin-top:12px">
+        <input class="input" id="restoreName" placeholder="복원할 백업 파일 이름" style="max-width:340px">
+        <input class="input" id="restoreConfirm" placeholder="확인 문구: 복원" style="max-width:160px">
+        <button class="btn sm danger" id="restoreBtn">복원</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 직원 / 테이블 -->
+  <section class="acc" data-card="staff">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>직원</h3>
+        <div class="sub" id="staffSub">직원 계정·역할·출퇴근</div>
+      </div>
+      <a class="btn sm soft" href="/staff?add=1">추가하기</a>
+    </div>
+    <div class="acc-body">
+      <p class="tip">지금은 사장님 혼자 써도 됩니다. 주방·카운터 직원을 만들면 각자 로그인해서 자기 화면만 봅니다.</p>
+      <div id="staffBox" class="small muted">불러오는 중…</div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <a class="btn sm" href="/staff">직원 관리 열기</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="acc" data-card="tables">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>테이블</h3>
+        <div class="sub" id="tablesSub">테이블·좌석·QR</div>
+      </div>
+      <a class="btn sm soft" href="/tables?add=1">추가하기</a>
+    </div>
+    <div class="acc-body">
+      <p class="tip">테이블을 추가하면 고객 주소(/t/번호)와 QR이 바로 만들어집니다.</p>
+      <div id="tablesBox" class="small muted">불러오는 중…</div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <a class="btn sm" href="/tables">테이블 관리 열기</a>
+        <a class="btn sm ghost" href="/qr">QR 인쇄</a>
+      </div>
+    </div>
+  </section>
+
+  <p class="small muted" style="margin-top:18px;line-height:1.6">
+    시제품입니다. 사업자등록번호 진위확인·본인인증·문자/카카오 발송은 붙이지 않았습니다(운영 시 필요).
+  </p>
+</main>
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/settings.js"></script>
+</body>
+</html>

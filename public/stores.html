@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fbf7f2">
+<title>맛집 · 매장 관리</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/stores.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <h1>매장 관리</h1>
+      <p>매장마다 메뉴·주문·직원·매출이 따로 저장됩니다. 위쪽 매장 선택으로 일하는 매장을 바꿉니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <button class="btn sm primary" id="addBtn">+ 매장 추가</button>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="font-size:18px;margin-bottom:8px">매장별 오늘 요약 비교</h3>
+    <div id="compare"></div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div class="row between" style="padding:14px 16px"><h3 style="font-size:18px">매장 목록</h3>
+      <span class="badge line" id="storeCount">0곳</span></div>
+    <div id="storeList"></div>
+  </div>
+
+  <p class="small muted" style="margin-top:14px;line-height:1.6">
+    · 새 매장은 기본 메뉴와 테이블이 함께 만들어집니다(다른 매장 메뉴를 복사할 수도 있습니다).<br>
+    · 기존 매장 데이터는 그대로 유지됩니다. 매장을 지우는 기능은 없고 ‘사용 안 함’으로만 바꿉니다.<br>
+    · 매장 전환은 관리자만 할 수 있습니다.
+  </p>
+</main>
+
+<div class="sheet-back" id="back"></div>
+<div class="sheet" id="storeSheet" role="dialog" aria-label="매장 정보">
+  <div class="sheet-head"><h3 id="stTitle">매장 추가</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label for="stName">상호</label><input class="input" id="stName" maxlength="40" placeholder="예: 맛집 2호점"></div>
+    <div class="field"><label for="stTagline">한 줄 소개 (선택)</label>
+      <input class="input" id="stTagline" maxlength="80" placeholder="예: 김포 운양동 · 한식·분식"></div>
+    <div class="grid2">
+      <div class="field"><label for="stAddress">주소 (선택)</label><input class="input" id="stAddress" maxlength="120"></div>
+      <div class="field"><label for="stPhone">전화 (선택)</label><input class="input" id="stPhone" maxlength="30"></div>
+    </div>
+    <div class="grid2" id="newOnly">
+      <div class="field"><label for="stTables">테이블 수</label><input class="input" id="stTables" type="number" min="1" max="50" value="8"></div>
+      <div class="field"><label for="stCopy">메뉴</label>
+        <select class="select" id="stCopy"><option value="">기본 메뉴 새로</option></select></div>
+    </div>
+    <p class="small muted" id="stHint">만든 뒤 위쪽 매장 선택에서 새 매장으로 바꾸면 그 매장 화면이 됩니다.</p>
+  </div>
+  <div class="sheet-foot"><button class="btn primary" id="stSave" style="width:100%">매장 만들기</button></div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/stores.js"></script>
+</body>
+</html>
