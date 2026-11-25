@@ -772,3 +772,7 @@ body.portal {
   .contact-grid, .sim { gap: 16px; }
   .plan { padding: 22px 20px; }
 }
+
+/* 다크 안내 카드의 본문 대비 */
+.side-card.dark li, .side-card.dark li::marker { color: #e2d3c3; }
+.side-card.dark li { line-height: 1.75; }
