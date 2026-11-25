@@ -188,8 +188,9 @@
         <b>${s.label}</b>
         <span class="bar"><i></i></span>
       </button>`).join("");
+    // 직접 고른 단계는 자동 재생을 멈추고 그대로 보여 준다.
     $$("#flowSteps .flow-step").forEach((b) =>
-      b.addEventListener("click", () => { index = Number(b.dataset.step); paint(); restart(); }));
+      b.addEventListener("click", () => { index = Number(b.dataset.step); paint(); stop(); }));
 
     nodes.forEach((n) => {
       const pos = Number(n.dataset.step);
@@ -224,7 +225,7 @@
   nodes.forEach((n) => n.addEventListener("click", () => {
     index = Number(n.dataset.step) || 0;
     paint();
-    restart();
+    stop();
   }));
 
   if (stage) {
