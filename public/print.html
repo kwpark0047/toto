@@ -11,15 +11,23 @@
          padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .bar .grow { flex: 1; }
   #sheets { padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-  .sheet { background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.12); position: relative; overflow: hidden; }
+  /* 인쇄용 종이 한 장 — 모달(.sheet) 스타일을 모두 되돌린다 */
+  #sheets .sheet {
+    background: #fff; box-shadow: 0 6px 22px rgba(28,25,23,.14);
+    position: relative; overflow: hidden; transform: none; z-index: auto;
+    max-height: none; display: block; border: 0; border-radius: 0;
+    margin: 0; padding: 0; flex: none;
+  }
+  #sheets .sheet::before { content: none; display: none; }
+  #sheets .sheet img { max-width: none; }
   .sheet img { position: absolute; object-fit: contain; }
   .hint { font-size: 13px; color: var(--muted); }
   @media print {
     body { background: #fff; }
     .bar { display: none; }
     #sheets { padding: 0; gap: 0; }
-    .sheet { box-shadow: none; page-break-after: always; break-after: page; }
-    .sheet:last-child { page-break-after: auto; }
+    #sheets .sheet { box-shadow: none; page-break-after: always; break-after: page; }
+    #sheets .sheet:last-child { page-break-after: auto; }
   }
 </style>
 </head>

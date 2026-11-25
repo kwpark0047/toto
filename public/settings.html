@@ -13,6 +13,7 @@
 <main class="wrap page">
   <div class="page-head">
     <div>
+      <div class="kicker">매장 기본값</div>
       <h1>매장 설정</h1>
       <p>기본 정보만 있어도 주문·QR·주방은 그대로 동작합니다. 필요한 것만 하나씩 채워 주세요.</p>
     </div>
@@ -236,6 +237,20 @@
         <a class="btn sm" href="/tables">테이블 관리 열기</a>
         <a class="btn sm ghost" href="/qr">QR 인쇄</a>
       </div>
+    </div>
+  </section>
+
+  <section class="acc" data-card="inquiries">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>도입 문의</h3>
+        <div class="sub" id="inqSub">공개 문의 폼으로 접수된 내용</div>
+      </div>
+      <span class="badge line" id="inqCount">0</span>
+    </div>
+    <div class="acc-body">
+      <p class="tip">홈페이지 '문의하기'로 접수된 내용입니다. 답변은 적어 둔 전화·이메일로 직접 연락해 주세요.</p>
+      <div id="inqBox" class="small muted">불러오는 중…</div>
     </div>
   </section>
 

@@ -293,6 +293,61 @@ CREATE TABLE IF NOT EXISTS staff_schedules (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_schedules ON staff_schedules(work_date, staff_id);
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+  email TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  linked_at TEXT NOT NULL,
+  last_login_at TEXT,
+  UNIQUE(provider, subject)
+);
+CREATE INDEX IF NOT EXISTS idx_oauth_staff ON oauth_accounts(staff_id);
+CREATE TABLE IF NOT EXISTS inquiries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  receipt_no TEXT NOT NULL UNIQUE,
+  store_name TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT '도입 문의',
+  message TEXT NOT NULL,
+  consent INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'NEW',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created ON inquiries(created_at);
+CREATE TABLE IF NOT EXISTS board_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL DEFAULT 'notice',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  author TEXT NOT NULL DEFAULT '',
+  hidden INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_board_created ON board_posts(created_at);
+CREATE TABLE IF NOT EXISTS board_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL REFERENCES board_posts(id) ON DELETE CASCADE,
+  author TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL,
+  hidden INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_board_comments ON board_comments(post_id, id);
+CREATE TABLE IF NOT EXISTS staff_transfers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  staff_id INTEGER NOT NULL,
+  from_store INTEGER NOT NULL,
+  to_store INTEGER NOT NULL,
+  actor_id INTEGER,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_staff_transfers ON staff_transfers(staff_id, id);
 """
 
 SEED_CATEGORIES = ["분식", "한식", "사이드", "음료"]
@@ -470,12 +525,38 @@ def init():
             seed(conn)
         if conn.execute("SELECT COUNT(*) c FROM dining_tables WHERE store_id=1").fetchone()["c"] == 0:
             seed_tables(conn)
+        if conn.execute("SELECT COUNT(*) c FROM board_posts").fetchone()["c"] == 0:
+            seed_board(conn)
         conn.execute(
             "INSERT INTO meta(key, value) VALUES('rev','1') ON CONFLICT(key) DO NOTHING"
         )
         conn.commit()
     finally:
         conn.close()
+
+
+def seed_board(conn):
+    """공개 게시판 기본 공지. 비어 있을 때만 넣는다."""
+    ts = now()
+    posts = [
+        ("notice", "w-toto QR 메뉴판을 시작합니다",
+         "테이블 QR·NFC로 메뉴 보기부터 주문·주방·결제 확인·매출까지 한 화면에서 이어지는 "
+         "QR 메뉴판 서비스를 시작합니다.\n\n"
+         "· 설치비·월 이용료 없이 기본 기능을 모두 쓸 수 있습니다.\n"
+         "· 주문 알림은 사장님 화면과 주방 화면에 바로 표시됩니다.\n"
+         "· 매장 정보와 메뉴는 로그인 후 '설정'에서 바꿀 수 있습니다.", "w-toto"),
+        ("update", "주방 KDS에 알레르기 경고와 묶음 조리를 더했습니다",
+         "주문서에 알레르기 정보가 있으면 주방 카드에 경고가 크게 표시됩니다. "
+         "같은 메뉴를 여러 테이블에서 주문하면 '메뉴별 묶음' 보기로 한 번에 조리할 수 있습니다.", "w-toto"),
+        ("review", "운양동 파일럿 매장 후기",
+         "점심 손님이 QR을 찍고 3분 만에 주문이 들어왔습니다. 주방 화면에서 접수·조리·서빙을 "
+         "한 번에 보니 홀 직원이 주문을 받으러 다니지 않아도 됐어요. (파일럿 매장 의견 정리)", "파일럿 매장"),
+    ]
+    for category, title, body, author in posts:
+        conn.execute(
+            "INSERT INTO board_posts(category, title, body, author, hidden, created_at)"
+            " VALUES(?,?,?,?,0,?)", (category, title, body, author, ts))
+    conn.commit()
 
 
 def seed_tables(conn, store_id=1):

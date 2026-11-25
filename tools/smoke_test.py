@@ -15,7 +15,9 @@ import datetime
 import http.cookiejar
 import io
 import json
+import os
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,6 +25,7 @@ import urllib.request
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
 OWNER = ("owner", "mangjip1234")
 PASS, FAIL = [], []
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -138,6 +141,151 @@ st, body = anon.get("/login", raw=True)
 check("로그인 화면은 공개", st == 200 and "로그인".encode() in body)
 st, body = anon.get("/t/1", raw=True)
 check("고객 메뉴(/t/1)는 공개", st == 200)
+
+
+# ---------------------------------------------------------------- 1b. 소셜 로그인(OAuth)
+print("\n[1b] 소셜 로그인(구글·카카오)")
+
+
+def raw_redirect(path, cookie=""):
+    """리다이렉트를 따라가지 않고 상태·Set-Cookie·Location을 본다."""
+    req = urllib.request.Request(BASE + path, headers={"Cookie": cookie} if cookie else {})
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(req, timeout=20) as r:
+            return r.status, (r.headers.get_all("Set-Cookie") or []), r.headers.get("Location") or ""
+    except urllib.error.HTTPError as e:
+        return e.code, (e.headers.get_all("Set-Cookie") or []), e.headers.get("Location") or ""
+
+
+st, prov = anon.get("/api/auth/oauth/providers")
+names = set((prov.get("providers") or {}).keys()) if isinstance(prov, dict) else set()
+check("OAuth 제공자 상태 조회(google·kakao)", st == 200 and names == {"google", "kakao"}, st)
+if st == 200:
+    check("키 미설정 시 configured=false 로 정직하게 안내",
+          prov["providers"]["google"]["configured"] is False
+          and prov["providers"]["kakao"]["configured"] is False,
+          prov.get("providers"))
+    check("리다이렉트 URI 안내",
+          prov.get("redirectUris", {}).get("google", "").endswith("/api/auth/oauth/google/callback")
+          and prov.get("redirectUris", {}).get("kakao", "").endswith("/api/auth/oauth/kakao/callback"),
+          prov.get("redirectUris"))
+
+st, sc, loc = raw_redirect("/api/auth/oauth/google")
+check("키 없이 구글 로그인 → 가짜 로그인 없이 안내로 이동",
+      st == 302 and "oauth=not_configured" in loc and "provider=google" in loc, (st, loc))
+check("키 없이 구글 로그인 → 세션 쿠키를 만들지 않음",
+      not any(c.startswith("mj_sid=") for c in sc), sc)
+st, sc, loc = raw_redirect("/api/auth/oauth/kakao")
+check("키 없이 카카오 로그인 → 가짜 로그인 없이 안내로 이동",
+      st == 302 and "oauth=not_configured" in loc and "provider=kakao" in loc, (st, loc))
+
+st, sc, loc = raw_redirect("/api/auth/oauth/google/callback?code=fake-code")
+check("state 없는 콜백 거부", st == 302 and "oauth=state" in loc, (st, loc))
+st, sc, loc = raw_redirect("/api/auth/oauth/google/callback?code=fake-code&state=abc",
+                           cookie="mj_oauth_state=google.abc")
+check("키 없는 콜백은 로그인 없이 안내(가짜 세션 없음)",
+      st == 302 and "oauth=not_configured" in loc and not any(c.startswith("mj_sid=") for c in sc),
+      (st, loc, sc))
+st, sc, loc = raw_redirect("/api/auth/oauth/kakao/callback?code=fake-code&state=abc",
+                           cookie="mj_oauth_state=google.abc")
+check("제공자가 다른 state 쿠키는 거부", st == 302 and "oauth=state" in loc, (st, loc))
+st, _ = anon.get("/api/auth/oauth/naver")
+check("지원하지 않는 제공자는 404", st == 404, st)
+st, me_after = anon.get("/api/auth/me")
+check("소셜 로그인 시도 뒤에도 익명 세션 유지", st == 200 and me_after.get("user") is None)
+
+st, body = anon.get("/login", raw=True)
+check("로그인 화면에 구글·카카오 버튼",
+      st == 200 and "Google로 시작하기".encode() in body and "카카오로 시작하기".encode() in body, st)
+check("로그인 화면에 앱 키 미연결 안내", st == 200 and "앱 키".encode() in body)
+st, body = anon.get("/signup", raw=True)
+check("회원가입 화면에 소셜 시작 버튼",
+      st == 200 and "카카오로 시작하기".encode() in body and "Google로 시작하기".encode() in body, st)
+
+# 앱 키가 있을 때의 동작(서버 환경변수를 건드리지 않고 라이브러리 단위로 확인)
+# 단위 검사가 실제 data/ DB를 건드리지 않도록 임시 DB로 분리한다.
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+_unit_db = os.path.join(tempfile.gettempdir(), "mj-oauth-unit.db")
+_saved_env = {"MENU_DB": os.environ.get("MENU_DB")}
+for _suffix in ("", "-wal", "-shm"):
+    if os.path.exists(_unit_db + _suffix):
+        os.remove(_unit_db + _suffix)
+os.environ["MENU_DB"] = _unit_db
+try:
+    from app import oauth as _oauth, staff as _staff, store as _store
+    _oauth_keys = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "KAKAO_CLIENT_ID",
+                   "KAKAO_CLIENT_SECRET", "OAUTH_BASE_URL")
+    _saved_env.update({k: os.environ.get(k) for k in _oauth_keys})
+    for _k in _oauth_keys:
+        os.environ.pop(_k, None)
+    check("단위: 키 없으면 configured=false",
+          _oauth.configured("google") is False and _oauth.configured("kakao") is False)
+    os.environ.update({"GOOGLE_CLIENT_ID": "test-client-id",
+                       "GOOGLE_CLIENT_SECRET": "test-secret",
+                       "OAUTH_BASE_URL": "https://example.com"})
+    _url = _oauth.authorize_url("google", "http://127.0.0.1:8050", "state-123")
+    _q = urllib.parse.parse_qs(urllib.parse.urlparse(_url).query)
+    check("단위: 구글 인가 URL 생성",
+          _url.startswith("https://accounts.google.com/o/oauth2/v2/auth?")
+          and _q.get("client_id") == ["test-client-id"]
+          and _q.get("state") == ["state-123"]
+          and _q.get("redirect_uri") == ["https://example.com/api/auth/oauth/google/callback"]
+          and _q.get("response_type") == ["code"], _url)
+    check("단위: 구글은 시크릿까지 있어야 사용 가능",
+          _oauth.configured("google") is True)
+    os.environ["GOOGLE_CLIENT_SECRET"] = ""
+    check("단위: 구글 시크릿이 없으면 미설정", _oauth.configured("google") is False)
+    os.environ["KAKAO_CLIENT_ID"] = "kakao-js-key"
+    os.environ.pop("KAKAO_CLIENT_SECRET", None)
+    check("단위: 카카오는 JS 키만으로 사용 가능", _oauth.configured("kakao") is True)
+    _kurl = _oauth.authorize_url("kakao", "http://127.0.0.1:8050", "s2")
+    check("단위: 카카오 인가 URL 생성",
+          _kurl.startswith("https://kauth.kakao.com/oauth/authorize?")
+          and "client_id=kakao-js-key" in _kurl and "state=s2" in _kurl, _kurl)
+    _cookie = _oauth.state_cookie("google", "abc")
+    check("단위: state 쿠키(HttpOnly·SameSite·10분)",
+          "mj_oauth_state=google.abc" in _cookie and "HttpOnly" in _cookie
+          and "SameSite=Lax" in _cookie and "Max-Age=600" in _cookie, _cookie)
+    check("단위: state 검증 통과",
+          _oauth.check_state("google", "abc", _oauth.state_from_cookie("a=1; " + _cookie)) is True)
+    check("단위: state 값·제공자 불일치 거부",
+          _oauth.check_state("google", "zzz", "google.abc") is False
+          and _oauth.check_state("kakao", "abc", "google.abc") is False
+          and _oauth.check_state("google", "abc", "") is False)
+    os.environ.pop("OAUTH_BASE_URL", None)
+    check("단위: 공개 주소는 https, 로컬은 http",
+          _oauth.public_base("http://w-toto.vercel.app") == "https://w-toto.vercel.app"
+          and _oauth.public_base("http://127.0.0.1:8050") == "http://127.0.0.1:8050")
+
+    # 계정 연결·첫 방문 생성은 임시 DB에서 직접 실행해 본다
+    _store.init()
+    _profile = {"provider": "google", "subject": "unit-123",
+                "email": "unit@example.com", "name": "단위테스트"}
+    _u1, _t1, _e1, _created1 = _oauth.login_with_profile(_profile, "google", store_name="단위 매장")
+    check("단위: 첫 소셜 로그인이면 매장·사장님 계정 생성",
+          _created1 is True and _u1["role"] == "admin" and bool(_t1), _u1)
+    _u2, _t2, _e2, _created2 = _oauth.login_with_profile(_profile, "google")
+    check("단위: 같은 소셜 계정은 기존 계정으로 로그인",
+          _created2 is False and _u2["id"] == _u1["id"], (_created2, _u2.get("id")))
+    _linked = _oauth.linked_staff_id("google", "unit-123")
+    check("단위: oauth_accounts 에 계정 연결 저장", _linked == _u1["id"], _linked)
+    try:
+        _oauth.login_with_profile({"provider": "kakao", "subject": "other-9",
+                                   "email": "", "name": "다른 사람"}, "kakao")
+        _blocked = False
+    except _oauth.OAuthError as _err:
+        _blocked = _err.code == "unlinked"
+    check("단위: 연결 없는 소셜 계정은 관리자 계정을 새로 만들지 않음(unlinked)", _blocked)
+finally:
+    for _k, _v in _saved_env.items():
+        if _v is None:
+            os.environ.pop(_k, None)
+        else:
+            os.environ[_k] = _v
+    for _suffix in ("", "-wal", "-shm"):
+        if os.path.exists(_unit_db + _suffix):
+            os.remove(_unit_db + _suffix)
 
 # ---------------------------------------------------------------- 2. 매장·메뉴
 print("\n[2] 메뉴·추천·원산지/알레르기")
@@ -1030,6 +1178,190 @@ st, body = manager_c.get("/reviews", raw=True)
 check("매니저는 리뷰 화면 열람", st == 200, st)
 st, _ = manager_c.get("/api/stores/comparison")
 check("매니저는 매장 비교 조회", st == 200, st)
+
+# ---------------------------------------------------------------- 27. 공개 서비스 포털
+print("\n[27] 공개 서비스 포털(메인·기능·매장·요금제·문의·게시판)")
+for path, label in [("/", "메인"), ("/features", "기능소개"), ("/places", "매장위치"),
+                    ("/pricing", "요금제"), ("/contact", "문의하기"), ("/board", "게시판"),
+                    ("/order", "테이블 선택")]:
+    st, body = anon.get(path, raw=True)
+    check(f"{label} 화면({path}) 공개", st == 200 and b"<html" in body.lower(), st)
+st, body = anon.get("/", raw=True)
+main_html = body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body)
+check("메인에 이용고객·사장님 흐름 애니메이션",
+      "이용고객" in main_html and "사장님" in main_html and "flow-stage" in main_html)
+check("메인 상단 메뉴(기능소개·매장위치·요금제·문의하기·게시판)",
+      all(t in main_html for t in ("기능소개", "매장위치", "요금제", "문의하기", "게시판")))
+check("메인 CTA(손님 체험·무료 시작)", "/t/1" in main_html and "/signup" in main_html)
+
+st, ps = anon.get("/api/public/stores")
+check("공개 매장 목록 API", st == 200 and len(ps.get("stores", [])) >= 1, st)
+if st == 200 and ps.get("stores"):
+    s0 = ps["stores"][0]
+    check("공개 매장에 주소·전화·주문 링크",
+          "address" in s0 and "phone" in s0 and s0.get("orderUrl", "").startswith("/t/"), s0)
+    check("공개 매장에 사업자번호·대표자 비노출",
+          "businessNo" not in s0 and "ownerName" not in s0)
+    check("지역 목록·활성 테이블 수",
+          isinstance(ps.get("regions"), list) and s0.get("tableCount", 0) >= 1, s0.get("tableCount"))
+st, new_store = owner.post("/api/stores", {"name": "공개 테스트 매장", "tables": 3})
+check("매장 추가", st == 201, st)
+st, ps = anon.get("/api/public/stores")
+check("추가한 매장이 공개 목록에 반영",
+      any(s["name"] == "공개 테스트 매장" for s in ps.get("stores", [])), st)
+
+st, err = anon.post("/api/public/inquiries", {"name": "", "message": "문의", "consent": True})
+check("문의 필수값 검증", st == 400, st)
+st, err = anon.post("/api/public/inquiries",
+                    {"name": "김문의", "phone": "010-1111-2222", "message": "도입 문의합니다",
+                     "consent": False})
+check("문의 동의 없으면 거부", st == 400, st)
+st, inq = anon.post("/api/public/inquiries",
+                    {"name": "김문의", "phone": "010-1111-2222", "storeName": "운양동 맛집",
+                     "kind": "데모 요청", "message": "QR 주문 데모를 보고 싶습니다", "consent": True})
+check("문의 접수·접수번호 발급", st == 201 and str(inq.get("receiptNo", "")).startswith("WT"),
+      (st, inq.get("receiptNo") if isinstance(inq, dict) else inq))
+st, _ = anon.get("/api/inquiries")
+check("비로그인은 문의 목록 차단(401)", st == 401, st)
+st, inq_list = owner.get("/api/inquiries")
+check("사장님은 접수 문의 조회",
+      st == 200 and any(i["receiptNo"] == inq.get("receiptNo") for i in inq_list.get("inquiries", [])), st)
+
+st, bd = anon.get("/api/public/board")
+check("게시판 기본 공지 시드", st == 200 and len(bd.get("posts", [])) >= 3, st)
+notice = (bd.get("posts") or [{}])[0]
+st, one = anon.get(f"/api/public/board/{notice.get('id', 0)}")
+check("게시글 상세(본문 포함)", st == 200 and bool(one.get("post", {}).get("body")), st)
+st, filtered = anon.get("/api/public/board?category=notice")
+check("게시판 분류 필터",
+      st == 200 and bool(filtered.get("posts")) and
+      all(p["category"] == "notice" for p in filtered["posts"]), st)
+st, err = anon.post("/api/public/board", {"title": "a", "body": "x", "category": "review"})
+check("짧은 글 거부", st == 400, st)
+st, newp = anon.post("/api/public/board",
+                     {"category": "review", "title": "테스트 후기", "body": "주문이 빨랐습니다",
+                      "author": "테스터"})
+check("게시글 작성", st == 201 and newp.get("post", {}).get("id", 0) > 0, st)
+pid = newp["post"]["id"]
+st, cm = anon.post(f"/api/public/board/{pid}/comments", {"author": "답글러", "body": "감사합니다"})
+check("댓글 작성", st == 201 and len(cm.get("post", {}).get("comments", [])) == 1, st)
+st, _ = anon.post("/api/public/board/9999999/comments", {"body": "없는 글"})
+check("없는 글 댓글은 404", st == 404, st)
+st, bd2 = anon.get("/api/public/board")
+check("목록에 댓글 수 반영",
+      any(p["id"] == pid and p.get("commentCount") == 1 for p in bd2.get("posts", [])), st)
+st, body = anon.get("/login", raw=True)
+check("로그인 화면에도 포털 메뉴", st == 200 and "기능소개".encode() in body, st)
+
+# ---------------------------------------------------------------- 28. 다수 매장 통합 운영
+print("\n[28] 다수 매장 통합 운영(분리·메뉴 복사·직원 이동·통합 매출)")
+owner.post("/api/stores/switch", {"storeId": 1})
+st, src = owner.post("/api/stores", {"name": "통합 원본 매장", "tables": 4})
+st2, dst = owner.post("/api/stores", {"name": "통합 대상 매장", "tables": 5})
+check("계정으로 매장 2곳 추가", st == 201 and st2 == 201 and src["id"] != dst["id"], (st, st2))
+
+st, _ = owner.post("/api/stores/switch", {"storeId": src["id"]})
+st, all_src = owner.get("/api/menu/all")
+cat_src = all_src["categories"][0]["id"]
+st, sig = owner.post("/api/items", {"name": "통합 시그니처", "price": 12000, "categoryId": cat_src,
+                                    "description": "메뉴 복사 확인용"})
+check("원본 매장에 메뉴 추가", st == 201 and sig["name"] == "통합 시그니처", st)
+st, cat_new = owner.post("/api/categories", {"name": "통합 특선"})
+check("원본 매장에 새 카테고리 추가", st == 201, st)
+st, course = owner.post("/api/items", {"name": "통합 코스", "price": 25000,
+                                       "categoryId": cat_new["id"], "description": "카테고리 복사 확인"})
+check("새 카테고리에 메뉴 추가", st == 201, st)
+st, t_src = owner.post("/api/tables", {"label": "통합 테이블"})
+check("원본 매장에 테이블 추가", st == 201, st)
+st, p_src = owner.post("/api/staff", {"name": "이동 직원", "username": "mover28",
+                                      "password": "movepw1234", "role": "counter"})
+check("원본 매장에 직원 추가", st == 201 and p_src["storeId"] == src["id"], st)
+
+st, _ = owner.post("/api/stores/switch", {"storeId": 1})
+st, m1 = owner.get("/api/menu/all")
+st, t1 = owner.get("/api/tables")
+st, s1 = owner.get("/api/staff")
+check("다른 매장에는 원본 메뉴가 없음(메뉴 분리)", "통합 시그니처" not in [i["name"] for i in m1["items"]])
+check("다른 매장에는 원본 테이블이 없음(테이블 분리)", "통합 테이블" not in [t["label"] for t in t1["tables"]])
+check("다른 매장에는 원본 직원이 없음(직원 분리)", p_src["id"] not in [x["id"] for x in s1["staff"]])
+
+st, cp = owner.post("/api/stores/copy-menu", {"fromStore": src["id"], "toStore": dst["id"],
+                                             "onDuplicate": "skip"})
+check("메뉴 전체 복사(같은 이름은 건너뛰기)",
+      st == 201 and cp["created"] >= 2 and cp["skipped"] >= 1 and cp["categoriesCreated"] == 1, cp)
+st, _ = owner.post("/api/stores/switch", {"storeId": dst["id"]})
+st, m_dst = owner.get("/api/menu/all")
+copy_item = next((i for i in m_dst["items"] if i["name"] == "통합 시그니처"), None)
+copy_course = next((i for i in m_dst["items"] if i["name"] == "통합 코스"), None)
+check("복사한 메뉴가 대상 매장에 생김", copy_item is not None and copy_item["price"] == 12000, copy_item)
+check("복사한 메뉴의 카테고리가 원본과 같음",
+      copy_item is not None and copy_item["category"] == "분식", copy_item and copy_item.get("category"))
+check("새 카테고리도 함께 만들어져 연결됨",
+      copy_course is not None and copy_course["category"] == "통합 특선",
+      copy_course and copy_course.get("category"))
+
+st, _ = owner.post("/api/stores/switch", {"storeId": src["id"]})
+st, _ = owner.patch(f"/api/items/{sig['id']}", {"name": "통합 시그니처", "price": 13000,
+                                               "categoryId": cat_src})
+st, same = owner.post("/api/stores/copy-menu", {"fromStore": src["id"], "toStore": src["id"]})
+check("같은 매장으로 복사 거부", st == 400, st)
+st, cp2 = owner.post("/api/stores/copy-menu", {"fromStore": src["id"], "toStore": dst["id"],
+                                               "itemIds": [sig["id"]], "onDuplicate": "overwrite"})
+check("선택 메뉴만 덮어쓰기 복사", st == 201 and cp2["updated"] == 1 and cp2["created"] == 0, cp2)
+st, _ = owner.post("/api/stores/switch", {"storeId": dst["id"]})
+st, m_dst2 = owner.get("/api/menu/all")
+copy_item2 = next((i for i in m_dst2["items"] if i["name"] == "통합 시그니처"), None)
+check("덮어쓴 가격이 반영됨", copy_item2 is not None and copy_item2["price"] == 13000,
+      copy_item2 and copy_item2.get("price"))
+
+mover_c = Client()
+st, _ = mover_c.login("mover28", "movepw1234")
+st, mme = mover_c.get("/api/auth/me")
+check("이동 전 직원은 원본 매장 소속", st == 200 and mme["user"]["storeId"] == src["id"],
+      mme.get("user", {}).get("storeId"))
+st, mv = owner.post("/api/stores/transfer-staff", {"staffId": p_src["id"], "toStore": dst["id"],
+                                                    "note": "통합 테스트 발령"})
+check("직원 매장 이동(발령)", st == 201 and mv["toStore"]["id"] == dst["id"], st)
+st, mme2 = mover_c.get("/api/auth/me")
+check("이동한 직원의 로그인 세션이 새 매장을 봄",
+      st == 200 and mme2["user"]["storeId"] == dst["id"], mme2.get("user", {}).get("storeId"))
+st, sd = owner.get("/api/staff")
+check("대상 매장 직원 목록에 이동 직원 포함", any(x["id"] == p_src["id"] for x in sd["staff"]))
+st, tl = owner.get("/api/stores/transfers")
+check("직원 이동 이력 기록",
+      any(t["staffId"] == p_src["id"] and t["toStore"] == dst["id"] for t in tl["transfers"]), tl)
+st, dst_tables = owner.get("/api/tables")
+dst_table = dst_tables["tables"][0]
+st, menu_d = anon.get(f"/api/menu?store={dst['id']}")
+first_item = menu_d["items"][0]
+st, chk_store = anon.get(f"/api/table/{dst_table['code']}?store={dst['id']}")
+check("다른 매장 QR 주소(?store)가 그 매장 테이블로 열림",
+      st == 200 and chk_store["table"]["storeId"] == dst["id"],
+      chk_store.get("table", {}).get("storeId") if isinstance(chk_store, dict) else st)
+st, o_dst = anon.post(f"/api/orders?store={dst['id']}",
+                      {"table": dst_table["id"], "items": [{"itemId": first_item["id"], "qty": 1}]})
+check("대상 매장에서 고객 주문", st == 201 and o_dst["storeId"] == dst["id"], st)
+st, paid_dst = owner.post(f"/api/orders/{o_dst['id']}/payment", {"paid": True})
+check("대상 매장 결제 확인", st == 200 and paid_dst["paymentStatus"] == "PAID", st)
+
+st, summ = owner.get("/api/stores/summary")
+drow = next((s for s in summ["stores"] if s["id"] == dst["id"]), {})
+check("전 매장 통합 매출 합계 API",
+      st == 200 and summ["totals"]["storeCount"] >= 3
+      and summ["totals"]["todayPaid"] >= drow.get("todayPaid", 0), st)
+check("대상 매장 매출이 합계에 포함", drow.get("todayPaid", 0) >= first_item["price"],
+      (drow.get("todayPaid"), first_item["price"]))
+check("매장별 매출 비중 계산",
+      all(0 <= s["monthShare"] <= 100 for s in summ["stores"])
+      and abs(sum(s["monthShare"] for s in summ["stores"]) - 100) < 0.5
+      if summ["totals"]["monthPaid"] else True, [s["monthShare"] for s in summ["stores"]])
+st, _ = anon.get("/api/stores/summary")
+check("비로그인은 통합 매출 차단(401)", st == 401, st)
+st, _ = manager_c.get("/api/stores/summary")
+check("매니저는 통합 매출 조회 가능", st == 200, st)
+st, _ = manager_c.post("/api/stores/transfer-staff", {"staffId": p_src["id"], "toStore": 1})
+check("매니저는 직원 이동 불가(403)", st == 403, st)
+owner.post("/api/stores/switch", {"storeId": 1})
 
 # ---------------------------------------------------------------- 요약
 print(f"\n{'='*54}\n  통과 {len(PASS)}건 / 실패 {len(FAIL)}건")

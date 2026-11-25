@@ -19,6 +19,13 @@ from . import config
 PAGES = {
     "": "index.html",
     "/": "index.html",
+    # 공개 서비스 포털
+    "/features": "features.html",
+    "/places": "places.html",
+    "/pricing": "pricing.html",
+    "/contact": "contact.html",
+    "/board": "board.html",
+    "/order": "order.html",
     "/login": "login.html",
     "/signup": "signup.html",
     "/admin": "admin.html",

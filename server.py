@@ -37,7 +37,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "same-origin")
         for k, v in (extra or {}).items():
-            self.send_header(k, v)
+            if isinstance(v, (list, tuple)):
+                for item in v:
+                    self.send_header(k, item)
+            else:
+                self.send_header(k, v)
         self.end_headers()
 
     def _send(self, status, ctype, body, extra=None):
@@ -84,7 +88,8 @@ class Handler(BaseHTTPRequestHandler):
                 res = api.handle(method, path, query, body, self._base_url(),
                                  self.headers.get("Host", ""), user=user, token=token,
                                  ip=self._client_ip(),
-                                 ua=self.headers.get("User-Agent", ""))
+                                 ua=self.headers.get("User-Agent", ""),
+                                 cookies=self.headers.get("Cookie", ""))
             except Exception as e:  # 마지막 안전망
                 import traceback
                 traceback.print_exc()

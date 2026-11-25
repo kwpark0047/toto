@@ -14,9 +14,9 @@ import re
 import time
 from urllib.parse import parse_qs
 
-from . import (auth, backup, catalog, config, customers, inventory, kitchen, notifier, orders,
-               reservations, reviews, qrs, recommend, service, settings, staff, stand, stats,
-               stores, store, tables, voice_order, waiting)
+from . import (auth, backup, catalog, config, customers, inventory, kitchen, notifier, oauth,
+               orders, portal, reservations, reviews, qrs, recommend, service, settings, staff,
+               stand, stats, stores, store, tables, voice_order, waiting)
 
 JSON = "application/json; charset=utf-8"
 
@@ -96,6 +96,66 @@ def api_me(ctx):
     return json_response(data)
 
 
+def _redirect(location, cookies=None, status=302):
+    headers = {"Location": location, "Cache-Control": "no-store"}
+    if cookies:
+        headers["Set-Cookie"] = cookies if isinstance(cookies, (list, tuple)) else [cookies]
+    return Response(b"", status, "text/plain; charset=utf-8", headers)
+
+
+@route("GET", r"/api/auth/oauth/providers")
+def api_oauth_providers(ctx):
+    """소셜 로그인 사용 가능 여부. 앱 키가 없으면 configured=false 로 정직하게 알린다."""
+    return json_response({
+        "providers": oauth.status(),
+        "redirectBase": oauth.public_base(ctx["base"]),
+        "redirectUris": {name: oauth.redirect_uri(name, ctx["base"]) for name in oauth.PROVIDERS},
+    })
+
+
+@route("GET", r"/api/auth/oauth/(?P<provider>google|kakao)")
+def api_oauth_start(ctx):
+    provider = ctx["match"]["provider"]
+    if not oauth.configured(provider):
+        # 키가 없으면 가짜 로그인 없이 로그인 화면에서 안내로 돌려보낸다
+        return _redirect(f"/login?oauth=not_configured&provider={provider}",
+                         [oauth.clear_state_cookie()])
+    state = oauth.new_state()
+    url = oauth.authorize_url(provider, ctx["base"], state)
+    return _redirect(url, [oauth.state_cookie(provider, state)])
+
+
+@route("GET", r"/api/auth/oauth/(?P<provider>google|kakao)/callback")
+def api_oauth_callback(ctx):
+    provider = ctx["match"]["provider"]
+    q = ctx["query"]
+    fail = lambda code: _redirect(f"/login?oauth={code}&provider={provider}",
+                                  [oauth.clear_state_cookie()])
+    if q.get("error"):
+        return fail("denied")
+    if not oauth.check_state(provider, q.get("state") or "",
+                             oauth.state_from_cookie(ctx.get("cookies"))):
+        return fail("state")
+    if not oauth.configured(provider):
+        return fail("not_configured")
+    code = q.get("code") or ""
+    if not code:
+        return fail("denied")
+    try:
+        access_token = oauth.exchange_code(provider, code, ctx["base"])
+        profile = oauth.fetch_profile(provider, access_token)
+        user, token, expires, created = oauth.login_with_profile(
+            profile, provider, ip=ctx["ip"], ua=ctx["ua"], store_name=q.get("store") or "")
+    except oauth.OAuthError as e:
+        return fail(e.code)
+    except Exception:  # 예상하지 못한 오류도 세션 없이 안내로 돌려보낸다
+        import traceback
+        traceback.print_exc()
+        return fail("server")
+    cookies = [auth.cookie_header(token, config.SESSION_HOURS * 3600), oauth.clear_state_cookie()]
+    return _redirect("/admin?welcome=1" if created else "/admin", cookies)
+
+
 def _session_data(user):
     data = {"user": user, "store": settings.public(), "setup": _setup(),
             "stores": stores.list_stores(include_inactive=False),
@@ -146,6 +206,44 @@ def api_account_update(ctx):
 @route("GET", r"/api/account/sessions", login=True)
 def api_account_sessions(ctx):
     return json_response({"sessions": auth.sessions_for(ctx["user"]["id"], ctx["token"])})
+
+
+# ---------------------------------------------------------------- 공개 포털
+# 로그인 없이 쓰는 서비스 소개·매장 목록·문의·게시판. 개인정보는 받는 목적만큼만.
+
+@route("GET", r"/api/public/stores")
+def api_public_stores(ctx):
+    return json_response(portal.public_stores())
+
+
+@route("POST", r"/api/public/inquiries")
+def api_public_inquiry(ctx):
+    return json_response(portal.create_inquiry(ctx["body"]), 201)
+
+
+@route("GET", r"/api/public/board")
+def api_public_board(ctx):
+    return json_response(portal.list_posts((ctx["query"].get("category") or "").strip()))
+
+
+@route("POST", r"/api/public/board")
+def api_public_board_create(ctx):
+    return json_response(portal.create_post(ctx["body"]), 201)
+
+
+@route("GET", r"/api/public/board/(?P<id>\d+)")
+def api_public_board_one(ctx):
+    return json_response(portal.get_post(int(ctx["match"]["id"])))
+
+
+@route("POST", r"/api/public/board/(?P<id>\d+)/comments")
+def api_public_board_comment(ctx):
+    return json_response(portal.add_comment(int(ctx["match"]["id"]), ctx["body"]), 201)
+
+
+@route("GET", r"/api/inquiries", perm="settings.edit")
+def api_inquiries(ctx):
+    return json_response(portal.list_inquiries())
 
 
 # ---------------------------------------------------------------- 매장·설정
@@ -1266,6 +1364,44 @@ def api_store_comparison(ctx):
     return json_response(stores.comparison(ctx["query"].get("date")))
 
 
+@route("GET", r"/api/stores/summary", perm="sales.view")
+def api_store_summary(ctx):
+    """모든 매장의 오늘·이번 달·누적 매출 합계와 매장별 비중."""
+    return json_response(stores.summary(ctx["query"].get("date")))
+
+
+@route("GET", r"/api/stores/menu", perm="settings.edit")
+def api_store_menu(ctx):
+    """복사할 원본 매장의 메뉴 목록."""
+    sid = ctx["query"].get("store") or ctx["query"].get("storeId") or stores.current()
+    return json_response(stores.store_menu(sid))
+
+
+@route("POST", r"/api/stores/copy-menu", perm="settings.edit")
+def api_store_copy_menu(ctx):
+    b = ctx["body"]
+    return json_response(stores.copy_menu(b.get("fromStore"), b.get("toStore"),
+                                          b.get("itemIds"), b.get("onDuplicate")), 201)
+
+
+@route("GET", r"/api/stores/staff", perm="settings.edit")
+def api_store_staff(ctx):
+    return json_response(stores.all_staff())
+
+
+@route("POST", r"/api/stores/transfer-staff", perm="settings.edit")
+def api_store_transfer_staff(ctx):
+    b = ctx["body"]
+    return json_response(stores.transfer_staff(b.get("staffId"), b.get("toStore"),
+                                               actor=ctx["user"], note=b.get("note")), 201)
+
+
+@route("GET", r"/api/stores/transfers", perm="settings.edit")
+def api_store_transfers(ctx):
+    q = ctx["query"].get("staff")
+    return json_response(stores.transfers(int(q) if str(q or "").isdigit() else None))
+
+
 # ---------------------------------------------------------------- 직원 권한·스케줄·급여
 @route("GET", r"/api/staff/permissions", perm="staff.manage")
 def api_staff_permissions(ctx):
@@ -1322,17 +1458,17 @@ def api_payroll_csv(ctx):
 
 # ---------------------------------------------------------------- 디스패치
 
-def handle(method, path, query, body, base, host, user=None, token=None, ip="", ua=""):
+def handle(method, path, query, body, base, host, user=None, token=None, ip="", ua="", cookies=""):
     # 지금 일하는 매장: 로그인 사용자는 세션의 매장, 손님은 ?store= 또는 기본 매장(1)
     sid = (user or {}).get("storeId")
     if not sid:
         raw = (query or {}).get("store")
         sid = int(raw) if str(raw or "").isdigit() else 1
     with stores.use(sid):
-        return _dispatch(method, path, query, body, base, host, user, token, ip, ua)
+        return _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookies)
 
 
-def _dispatch(method, path, query, body, base, host, user, token, ip, ua):
+def _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookies=""):
     for m, rx, fn, guard in ROUTES:
         if m != method:
             continue
@@ -1351,7 +1487,8 @@ def _dispatch(method, path, query, body, base, host, user, token, ip, ua):
         if roles is not None and user["role"] not in roles:
             return json_response({"error": "이 기능을 쓸 권한이 없습니다"}, 403)
         ctx = {"match": mm.groupdict(), "query": query, "body": body or {},
-               "base": base, "host": host, "user": user, "token": token, "ip": ip, "ua": ua}
+               "base": base, "host": host, "user": user, "token": token, "ip": ip, "ua": ua,
+               "cookies": cookies}
         try:
             return fn(ctx)
         except auth.AuthError as e:

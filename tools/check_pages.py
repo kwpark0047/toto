@@ -15,13 +15,19 @@ import quickjs
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUB = os.path.join(ROOT, "public")
 PAIRS = {
+    "index.html": ["util.js", "portal.js", "landing.js"],
+    "order.html": ["util.js", "order.js"],
+    "features.html": ["util.js", "portal.js"],
+    "places.html": ["util.js", "portal.js", "places.js"],
+    "pricing.html": ["util.js", "portal.js", "pricing.js"],
+    "contact.html": ["util.js", "portal.js", "contact.js"],
+    "board.html": ["util.js", "portal.js", "board.js"],
     "customer.html": ["util.js", "customer.js"],
     "admin.html": ["util.js", "nav.js", "admin.js"],
     "kitchen.html": ["util.js", "kitchen.js"],
     "menu.html": ["util.js", "nav.js", "menu.js"],
     "customers.html": ["util.js", "nav.js", "customers.js"],
     "qr.html": ["util.js", "nav.js", "qr.js"],
-    "index.html": [],
     "staff.html": ["util.js", "nav.js", "staff.js"],
     "settings.html": ["util.js", "nav.js", "settings.js"],
     "tables.html": ["util.js", "nav.js", "tables.js"],

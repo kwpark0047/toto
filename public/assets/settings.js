@@ -268,5 +268,33 @@
     if (first) first.classList.add("open");
   }
 
+
+  async function loadInquiries() {
+    const box = $("#inqBox");
+    if (!box) return;
+    try {
+      const data = await api("/api/inquiries");
+      const list = data.inquiries || [];
+      const cnt = $("#inqCount");
+      if (cnt) cnt.textContent = `${list.length}건`;
+      if (!list.length) { box.innerHTML = '<span class="small muted">아직 접수된 문의가 없습니다.</span>'; return; }
+      box.innerHTML = `<div class="tablewrap"><table class="table">
+        <thead><tr><th>접수번호</th><th>종류</th><th>이름</th><th>연락처</th><th>내용</th><th>접수</th></tr></thead>
+        <tbody>${list.map((q) => `<tr>
+          <td class="nums"><b>${esc(q.receiptNo)}</b></td>
+          <td>${esc(q.kind)}</td>
+          <td>${esc(q.name)}${q.storeName ? `<div class="small muted">${esc(q.storeName)}</div>` : ""}</td>
+          <td class="small">${esc(q.phone || q.email || "-")}</td>
+          <td class="small" style="max-width:300px">${esc(q.message)}</td>
+          <td class="nums small muted">${esc(q.createdAt)}</td>
+        </tr>`).join("")}</tbody></table></div>`;
+      if ($("#inqSub")) $("#inqSub").textContent = `최근 ${list.length}건 · 홈페이지 문의 폼`;
+    } catch (e) {
+      box.innerHTML = '<span class="small muted">문의를 불러오지 못했습니다.</span>';
+    }
+  }
+
+  loadInquiries();
+
   load().catch((e) => toast(e.message, "err"));
 })();

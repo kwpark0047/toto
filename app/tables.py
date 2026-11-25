@@ -56,9 +56,19 @@ def get_any(table_id):
 
 
 def by_code(code):
-    """고객 주소 /t/<코드> → 테이블. 코드는 매장이 달라도 겹치지 않는다."""
+    """고객 주소 /t/<코드> → 테이블.
+
+    기본 테이블 코드는 매장마다 1,2,3… 으로 같을 수 있으므로, 지금 매장(?store= 또는 세션)
+    안에서 먼저 찾는다. 그 매장에 없고 전체에서 하나뿐일 때만 다른 매장 테이블로 인정한다.
+    """
     with store.read() as conn:
-        r = conn.execute("SELECT * FROM dining_tables WHERE code=?", (str(code),)).fetchone()
+        r = conn.execute(
+            "SELECT * FROM dining_tables WHERE code=? AND store_id=? ORDER BY id LIMIT 1",
+            (str(code), stores.current())).fetchone()
+        if not r:
+            rows = conn.execute("SELECT * FROM dining_tables WHERE code=?", (str(code),)).fetchall()
+            if len(rows) == 1:
+                r = rows[0]
         return _row(r) if r else None
 
 

@@ -756,7 +756,7 @@
         <div style="font-size:42px">🙏</div>
         <h1 style="font-size:23px;margin:10px 0 6px">지금은 주문을 받지 않습니다</h1>
         <p class="muted" style="line-height:1.6">${esc(message)}</p>
-        <a class="btn primary" href="/" style="margin-top:14px">테이블 다시 고르기</a>
+        <a class="btn primary" href="/order" style="margin-top:14px">테이블 다시 고르기</a>
       </div></main>`;
   }
 

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#faf8f5">
+<meta name="description" content="w-toto QR 메뉴판을 쓰는 매장 목록 — 지역·이름으로 찾고 바로 주문·웨이팅·예약으로 이동하세요.">
+<title>매장위치 · w-toto QR 메뉴판</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body class="portal">
+<header class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span></a>
+    <nav class="nav-links" aria-label="주요 메뉴">
+      <a href="/features">기능소개</a>
+      <a href="/places" class="on" aria-current="page">매장위치</a>
+      <a href="/pricing">요금제</a>
+      <a href="/contact">문의하기</a>
+      <a href="/board">게시판</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn sm ghost" href="/login">로그인</a>
+      <a class="btn sm primary" href="/signup">무료로 시작</a>
+      <button class="nav-toggle" id="navToggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <div class="nav-drawer" id="navDrawer">
+    <a href="/features">기능소개 <span>›</span></a>
+    <a href="/places" class="on">매장위치 <span>›</span></a>
+    <a href="/pricing">요금제 <span>›</span></a>
+    <a href="/contact">문의하기 <span>›</span></a>
+    <a href="/board">게시판 <span>›</span></a>
+    <div class="row" style="gap:8px">
+      <a class="btn primary grow" href="/signup">무료로 시작</a><a class="btn grow" href="/login">로그인</a>
+    </div>
+  </div>
+</header>
+
+<main class="portal-main">
+  <section class="page-hero">
+    <div class="portal-wrap">
+      <div class="eyebrow">매장위치</div>
+      <h1>지금 주문할 수 있는 매장</h1>
+      <p>w-toto를 쓰는 매장 목록입니다. 매장을 고르면 그 매장의 주문 화면·웨이팅·예약으로 바로 이동합니다.</p>
+    </div>
+  </section>
+
+  <section class="lp-sec tight">
+    <div class="portal-wrap">
+      <div class="places-bar">
+        <input class="input grow" id="placeSearch" type="search" placeholder="매장 이름·주소로 찾기" aria-label="매장 검색">
+        <div class="region-chips" id="regionChips"></div>
+        <span class="badge line" id="placeCount">–</span>
+      </div>
+
+      <div class="place-grid" id="placeGrid">
+        <div class="place"><p class="muted small">매장 목록을 불러오는 중…</p></div>
+      </div>
+
+      <p class="places-note">
+        · 목록은 매장이 직접 등록한 공개 정보(이름·한 줄 소개·주소·전화·영업시간)만 보여 줍니다.<br>
+        · 주문 화면은 테이블 QR과 같은 주소(<b>/t/번호</b>)입니다. QR이 없으면 테이블 번호를 매장에 문의해 주세요.<br>
+        · 내 매장을 목록에 올리려면 <a class="link-arrow" href="/signup">무료로 시작</a> 후 설정에서 주소·전화를 채워 주세요.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="portal-wrap">
+    <div class="foot-grid">
+      <div><div class="brand-line"><span class="nav-logo">w</span><b>w-toto</b></div>
+        <p>식당의 QR 메뉴판·주문·주방·매출을 한 곳에서.<br>기본 기능은 무료로 시작합니다.</p></div>
+      <div><h4>서비스</h4><a href="/features">기능소개</a><a href="/pricing">요금제</a><a href="/order">테이블 주문</a></div>
+      <div><h4>매장</h4><a href="/places">매장위치</a><a href="/reserve">예약 신청</a><a href="/wait">웨이팅 접수</a></div>
+      <div><h4>고객지원</h4><a href="/contact">문의하기</a><a href="/board">게시판</a><a href="/privacy">개인정보 처리방침</a></div>
+    </div>
+    <div class="bottom"><span>© <span data-year>2026</span> w-toto · QR 메뉴판</span><span>시제품: 결제(PG)·문자 발송은 아직 연결되지 않았습니다.</span></div>
+  </div>
+</footer>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/portal.js"></script>
+<script src="/assets/places.js"></script>
+</body>
+</html>

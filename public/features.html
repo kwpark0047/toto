@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#faf8f5">
+<meta name="description" content="w-toto QR 메뉴판 기능 — QR·NFC 주문, 주방 KDS, 웨이팅, 예약, 재고, 매출, 다점포, 접근성·다국어.">
+<title>기능소개 · w-toto QR 메뉴판</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body class="portal">
+<header class="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span></a>
+    <nav class="nav-links" aria-label="주요 메뉴">
+      <a href="/features" class="on" aria-current="page">기능소개</a>
+      <a href="/places">매장위치</a>
+      <a href="/pricing">요금제</a>
+      <a href="/contact">문의하기</a>
+      <a href="/board">게시판</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn sm ghost" href="/login">로그인</a>
+      <a class="btn sm primary" href="/signup">무료로 시작</a>
+      <button class="nav-toggle" id="navToggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <div class="nav-drawer" id="navDrawer">
+    <a href="/features" class="on">기능소개 <span>›</span></a>
+    <a href="/places">매장위치 <span>›</span></a>
+    <a href="/pricing">요금제 <span>›</span></a>
+    <a href="/contact">문의하기 <span>›</span></a>
+    <a href="/board">게시판 <span>›</span></a>
+    <div class="row" style="gap:8px">
+      <a class="btn primary grow" href="/signup">무료로 시작</a><a class="btn grow" href="/login">로그인</a>
+    </div>
+  </div>
+</header>
+
+<main class="portal-main">
+  <section class="page-hero">
+    <div class="portal-wrap">
+      <div class="eyebrow">기능소개</div>
+      <h1>주문에서 단골까지,<br>끊기지 않는 한 흐름</h1>
+      <p>손님이 QR을 찍는 순간부터 주방·결제·매출·재고·다음 방문까지 이어집니다. 각 기능은 아래 링크에서 바로 체험할 수 있습니다.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="/signup">무료로 매장 시작</a>
+        <a class="btn ghost" href="/t/1">손님 화면 체험</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-sec tight">
+    <div class="portal-wrap">
+      <div class="fd-list">
+        <article class="fd-row reveal">
+          <span class="ic">▦</span>
+          <div>
+            <h3>QR · NFC 메뉴판 <span class="badge brand">무료</span></h3>
+            <p>테이블마다 고객 주소(<b>/t/번호</b>)와 QR·NFC가 자동으로 만들어집니다. 사진, 원산지, 알레르기, 매운맛 단계, 옵션(맵기·사리)까지 손님 화면에 그대로 나옵니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/t/1">메뉴 화면</a><a class="btn ghost" href="/order">테이블 선택</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">🍳</span>
+          <div>
+            <h3>주방 KDS <span class="badge brand">무료</span></h3>
+            <p>새 주문 → 접수 → 조리중 → 조리완료 → 서빙완료 4단계. 지연 경고, 알레르기 강조, 메뉴별 묶음 보기, 큰 글씨 다크 화면으로 주방에서 바로 읽힙니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/kitchen">주방 화면</a><span class="small muted">로그인 필요</span></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">⏳</span>
+          <div>
+            <h3>웨이팅 <span class="badge brand">무료</span></h3>
+            <p>손님이 전화번호로 번호표를 받고, 내 순서·예상 대기 시간을 확인합니다. 매장 앞 보드에 호출 번호가 크게 뜨고, 호출 시 브라우저 알림을 보냅니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/wait">대기 접수</a><a class="btn ghost" href="/wait/board">매장 보드</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">📅</span>
+          <div>
+            <h3>예약 <span class="badge brand">무료</span></h3>
+            <p>손님은 날짜·시간·인원만 신청하고, 확정은 사장님이 직접 누릅니다. 도착·노쇼·취소 상태와 시간대별 예약을 달력으로 봅니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/reserve">예약 신청</a><a class="btn ghost" href="/reservations">예약 관리</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">📦</span>
+          <div>
+            <h3>재고·레시피 <span class="badge brand">무료</span></h3>
+            <p>메뉴별 소모량을 정해 두면 결제 확인 때 재료가 자동으로 빠집니다. 안전재고 미만 경고와 “이 메뉴 품절로 바꿀까요?” 제안까지.</p>
+          </div>
+          <div class="links"><a class="btn" href="/inventory">재고 화면</a><span class="small muted">로그인 필요</span></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">₩</span>
+          <div>
+            <h3>매출·정산 <span class="badge brand">무료</span></h3>
+            <p>현금 결제를 확인한 주문만 매출로 잡습니다. 미수금·할인(포인트)·시간대·카테고리·인기 메뉴를 한 화면에서 보고 CSV로 내려받습니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/revenue">매출 화면</a><span class="small muted">로그인 필요</span></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">🏬</span>
+          <div>
+            <h3>다점포 <span class="badge brand">무료</span></h3>
+            <p>매장마다 메뉴·주문·직원·매출이 따로 저장됩니다. 관리자는 매장을 전환하며 비교하고, 손님은 공개 매장 목록에서 원하는 매장으로 바로 갑니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/places">매장 찾기</a><a class="btn ghost" href="/stores">매장 관리</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">♿</span>
+          <div>
+            <h3>접근성 · 다국어 <span class="badge brand">무료</span></h3>
+            <p>글자 크기 3단계, 고대비, 움직임 최소화, 음성 주문·읽어 주기를 손님 화면에서 켤 수 있습니다. 한국어·영어·중국어·일본어 메뉴 번역을 지원합니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/t/1">접근성 체험</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">⭐</span>
+          <div>
+            <h3>리뷰 · 회원 <span class="badge brand">무료</span></h3>
+            <p>결제를 마친 손님이 별점과 한 줄 평가를 남깁니다. 회원은 방문·결제 기준 등급과 포인트로 쌓이고, 생일 목록과 쿠폰 발송 대상이 됩니다.</p>
+          </div>
+          <div class="links"><a class="btn" href="/reviews">리뷰</a><a class="btn ghost" href="/customers">회원</a></div>
+        </article>
+
+        <article class="fd-row reveal">
+          <span class="ic">👥</span>
+          <div>
+            <h3>직원 · 권한 <span class="badge brand">무료</span></h3>
+            <p>관리자·매니저·카운터·주방·알바 5역할에 권한을 세분화합니다. 출퇴근 기록, 주간 스케줄, 예상 급여와 CSV 내보내기까지.</p>
+          </div>
+          <div class="links"><a class="btn" href="/staff">직원 관리</a><span class="small muted">로그인 필요</span></div>
+        </article>
+      </div>
+
+      <div class="places-note">
+        * 표시된 화면은 시제품 기준입니다. 실제 카드 결제(PG)·문자·카카오 발송은 대행사 계정 연결 전까지 기록만 남습니다.
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-sec">
+    <div class="portal-wrap">
+      <div class="stat-band reveal">
+        <div><div class="k">메뉴 등록</div><div class="v">16개</div><div class="s">기본 메뉴 바로 시작</div></div>
+        <div><div class="k">주문 단계</div><div class="v">4단계</div><div class="s">접수→조리→서빙→결제</div></div>
+        <div><div class="k">지원 언어</div><div class="v">4개</div><div class="s">한·영·중·일</div></div>
+        <div><div class="k">기본 요금</div><div class="v">0원</div><div class="s">설치비·월 이용료 없음</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="portal-wrap">
+    <div class="foot-grid">
+      <div><div class="brand-line"><span class="nav-logo">w</span><b>w-toto</b></div>
+        <p>식당의 QR 메뉴판·주문·주방·매출을 한 곳에서.<br>기본 기능은 무료로 시작합니다.</p></div>
+      <div><h4>서비스</h4><a href="/features">기능소개</a><a href="/pricing">요금제</a><a href="/order">테이블 주문</a></div>
+      <div><h4>매장</h4><a href="/places">매장위치</a><a href="/reserve">예약 신청</a><a href="/wait">웨이팅 접수</a></div>
+      <div><h4>고객지원</h4><a href="/contact">문의하기</a><a href="/board">게시판</a><a href="/privacy">개인정보 처리방침</a></div>
+    </div>
+    <div class="bottom"><span>© <span data-year>2026</span> w-toto · QR 메뉴판</span><span>시제품: 결제(PG)·문자 발송은 아직 연결되지 않았습니다.</span></div>
+  </div>
+</footer>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/portal.js"></script>
+</body>
+</html>

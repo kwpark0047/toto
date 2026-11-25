@@ -209,3 +209,232 @@ def comparison(date=None):
     return {"date": date, "month": month, "stores": rows,
             "totalPaid": sum(r["todayPaid"] for r in rows),
             "totalMonthPaid": sum(r["monthPaid"] for r in rows)}
+
+
+# ============================================================================
+# 다수 매장 통합 운영 — 메뉴 복사 · 직원 이동 · 전 매장 합계
+# ============================================================================
+
+def copy_menu(from_store, to_store, item_ids=None, on_duplicate="skip"):
+    """한 매장의 메뉴를 다른 매장으로 복사한다.
+
+    item_ids 를 주면 그 메뉴만, 없으면 전체. 같은 이름의 메뉴가 대상 매장에 있으면
+    on_duplicate="skip"(건너뛰기) 또는 "overwrite"(가격·설명·옵션·사진·추천까지 덮어쓰기).
+    """
+    try:
+        src = _clean_sid(from_store)
+        dst = _clean_sid(to_store)
+    except (TypeError, ValueError):
+        raise ValueError("매장을 골라 주세요")
+    if src == dst:
+        raise ValueError("같은 매장으로는 복사할 수 없습니다")
+    for sid in (src, dst):
+        if not exists(sid):
+            raise LookupError("매장을 찾을 수 없습니다")
+    on_duplicate = (on_duplicate or "skip").strip().lower()
+    if on_duplicate not in ("skip", "overwrite"):
+        raise ValueError("중복 메뉴 처리는 skip(건너뛰기) 또는 overwrite(덮어쓰기)로 정해 주세요")
+
+    wanted = None
+    if item_ids:
+        try:
+            wanted = {int(x) for x in item_ids}
+        except (TypeError, ValueError):
+            raise ValueError("복사할 메뉴를 다시 골라 주세요")
+
+    with store.read() as conn:
+        cats = conn.execute(
+            "SELECT * FROM categories WHERE store_id=? ORDER BY sort, id", (src,)).fetchall()
+        items = conn.execute(
+            "SELECT * FROM menu_items WHERE store_id=? ORDER BY sort, id", (src,)).fetchall()
+        dst_cats = {r["name"].strip(): r["id"] for r in conn.execute(
+            "SELECT id, name FROM categories WHERE store_id=?", (dst,)).fetchall()}
+        dst_items = {r["name"].strip(): r for r in conn.execute(
+            "SELECT id, name FROM menu_items WHERE store_id=?", (dst,)).fetchall()}
+        max_sort = conn.execute(
+            "SELECT COALESCE(MAX(sort), 0) s FROM menu_items WHERE store_id=?", (dst,)
+        ).fetchone()["s"]
+        max_cat_sort = conn.execute(
+            "SELECT COALESCE(MAX(sort), 0) s FROM categories WHERE store_id=?", (dst,)
+        ).fetchone()["s"]
+
+    chosen = [i for i in items if wanted is None or i["id"] in wanted]
+    if wanted is not None and not chosen:
+        raise ValueError("복사할 메뉴가 없습니다")
+
+    used_cat_ids = {i["category_id"] for i in chosen}
+    cat_map = {}
+    created_cats = 0
+    created = updated = skipped = 0
+    ts = store.now()
+    with store.tx() as conn:
+        for c in cats:
+            if c["id"] not in used_cat_ids:
+                continue
+            name = c["name"].strip()
+            if name in dst_cats:
+                cat_map[c["id"]] = dst_cats[name]
+                continue
+            max_cat_sort += 1
+            cur = conn.execute(
+                "INSERT INTO categories(store_id, name, sort, created_at) VALUES(?,?,?,?)",
+                (dst, name, max_cat_sort, ts))
+            cat_map[c["id"]] = cur.lastrowid
+            dst_cats[name] = cur.lastrowid
+            created_cats += 1
+
+        for i in chosen:
+            name = i["name"].strip()
+            cat_id = cat_map.get(i["category_id"]) or dst_cats.get(
+                next((c["name"].strip() for c in cats if c["id"] == i["category_id"]), ""), 0)
+            fields = (cat_id, i["price"], i["description"], i["image"], i["options"],
+                      i["soldout"], i["featured"], i["featured_note"], i["origin"],
+                      i["allergens"], i["spice"], i["i18n"], ts)
+            if name in dst_items:
+                if on_duplicate == "skip":
+                    skipped += 1
+                    continue
+                conn.execute(
+                    "UPDATE menu_items SET category_id=?, price=?, description=?, image=?,"
+                    " options=?, soldout=?, featured=?, featured_note=?, origin=?, allergens=?,"
+                    " spice=?, i18n=?, updated_at=? WHERE store_id=? AND name=?",
+                    (*fields, dst, name))
+                updated += 1
+                continue
+            max_sort += 1
+            cur = conn.execute(
+                "INSERT INTO menu_items(store_id, category_id, name, price, description, image,"
+                " options, soldout, sort, featured, featured_sort, featured_note, origin,"
+                " allergens, spice, i18n, created_at, updated_at)"
+                " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (dst, cat_id, name, i["price"], i["description"], i["image"], i["options"],
+                 i["soldout"], max_sort, i["featured"], i["featured_sort"], i["featured_note"],
+                 i["origin"], i["allergens"], i["spice"], i["i18n"], ts, ts))
+            dst_items[name] = {"id": cur.lastrowid, "name": name}
+            created += 1
+        store.bump(conn)
+    return {"fromStore": src, "toStore": dst, "onDuplicate": on_duplicate,
+            "selected": len(chosen), "created": created, "updated": updated,
+            "skipped": skipped, "categoriesCreated": created_cats}
+
+
+def transfer_staff(staff_id, to_store, actor=None, note=""):
+    """직원을 다른 매장으로 발령한다. 세션의 매장도 함께 옮기고 이력을 남긴다."""
+    try:
+        staff_id = int(staff_id)
+        dst = _clean_sid(to_store)
+    except (TypeError, ValueError):
+        raise ValueError("직원과 옮길 매장을 골라 주세요")
+    if not exists(dst):
+        raise LookupError("매장을 찾을 수 없습니다")
+    with store.read() as conn:
+        row = conn.execute("SELECT * FROM staff WHERE id=?", (staff_id,)).fetchone()
+        target = conn.execute("SELECT id, name, active FROM stores WHERE id=?", (dst,)).fetchone()
+    if not row:
+        raise LookupError("직원을 찾을 수 없습니다")
+    if not target or not target["active"]:
+        raise ValueError("사용하지 않는 매장으로는 옮길 수 없습니다")
+    src = row["store_id"] if "store_id" in row.keys() else 1
+    if src == dst:
+        raise ValueError("이미 그 매장에서 일하고 있습니다")
+    ts = store.now()
+    with store.tx() as conn:
+        conn.execute("UPDATE staff SET store_id=?, updated_at=? WHERE id=?", (dst, ts, staff_id))
+        # 로그인 중인 기기도 새 매장을 보게 한다(권한·역할은 그대로).
+        conn.execute("UPDATE staff_sessions SET active_store=? WHERE staff_id=?", (dst, staff_id))
+        conn.execute(
+            "INSERT INTO staff_transfers(staff_id, from_store, to_store, actor_id, note, created_at)"
+            " VALUES(?,?,?,?,?,?)",
+            (staff_id, src, dst, (actor or {}).get("id"), (note or "").strip()[:200], ts))
+        store.bump(conn)
+    return {"staff": {"id": staff_id, "name": row["name"], "username": row["username"],
+                      "role": row["role"]},
+            "fromStore": {"id": src}, "toStore": {"id": dst, "name": target["name"]},
+            "movedAt": ts}
+
+
+def transfers(staff_id=None, limit=50):
+    sql = ("SELECT t.*, s.name AS staff_name, a.name AS from_name, b.name AS to_name"
+           " FROM staff_transfers t LEFT JOIN staff s ON s.id=t.staff_id"
+           " LEFT JOIN stores a ON a.id=t.from_store LEFT JOIN stores b ON b.id=t.to_store")
+    params = []
+    if staff_id:
+        sql += " WHERE t.staff_id=?"
+        params.append(int(staff_id))
+    sql += " ORDER BY t.id DESC LIMIT ?"
+    params.append(int(limit))
+    with store.read() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return {"transfers": [{
+        "id": r["id"], "staffId": r["staff_id"], "staffName": r["staff_name"] or "",
+        "fromStore": r["from_store"], "fromName": r["from_name"] or "",
+        "toStore": r["to_store"], "toName": r["to_name"] or "",
+        "note": r["note"], "createdAt": r["created_at"],
+    } for r in rows]}
+
+
+def all_staff():
+    """모든 매장의 직원 목록(이동 화면용). 로그인 없이 노출되지 않도록 API에서 권한 검사."""
+    with store.read() as conn:
+        rows = conn.execute(
+            "SELECT s.id, s.username, s.name, s.role, s.active, s.store_id, st.name AS store_name"
+            " FROM staff s LEFT JOIN stores st ON st.id=s.store_id ORDER BY st.name, s.name, s.id"
+        ).fetchall()
+    return {"staff": [{
+        "id": r["id"], "username": r["username"], "name": r["name"], "role": r["role"],
+        "active": bool(r["active"]), "storeId": r["store_id"] or 1,
+        "storeName": r["store_name"] or "",
+    } for r in rows]}
+
+
+def store_menu(store_id):
+    """다른 매장의 메뉴 목록(복사 화면용). 이름·가격·카테고리만."""
+    from . import catalog
+    sid = _clean_sid(store_id)
+    if not exists(sid):
+        raise LookupError("매장을 찾을 수 없습니다")
+    with use(sid):
+        cats = catalog.categories()
+        items = catalog.items()
+    return {"storeId": sid,
+            "categories": [{"id": c["id"], "name": c["name"]} for c in cats],
+            "items": [{"id": i["id"], "name": i["name"], "price": i["price"],
+                       "categoryId": i["categoryId"], "categoryName": i.get("category") or ""}
+                      for i in items]}
+
+
+def summary(date=None):
+    """소유·운영 중인 모든 매장의 매출 합계·주문 건수·비중."""
+    from . import stats
+    date = date or store.today()
+    month_start = date[:7] + "-01"
+    rows = []
+    for s in list_stores(include_inactive=False):
+        with use(s["id"]):
+            today = stats.summary(date)
+            month = stats.period(month_start, date)
+            with store.read() as conn:
+                alltime = conn.execute(
+                    "SELECT COALESCE(SUM(total),0) paid, COUNT(*) c FROM orders"
+                    " WHERE store_id=? AND payment_status='PAID'", (s["id"],)).fetchone()
+        rows.append({
+            "id": s["id"], "name": s["name"], "isCurrent": s["id"] == current(),
+            "todayPaid": today["paidAmount"], "todayOrders": today["orderCount"],
+            "monthPaid": month["totals"]["paidAmount"], "monthOrders": month["totals"]["orderCount"],
+            "totalPaid": alltime["paid"], "totalOrders": alltime["c"],
+        })
+    today_total = sum(r["todayPaid"] for r in rows)
+    month_total = sum(r["monthPaid"] for r in rows)
+    total_all = sum(r["totalPaid"] for r in rows)
+    for r in rows:
+        r["todayShare"] = round((r["todayPaid"] / today_total * 100), 1) if today_total else 0.0
+        r["monthShare"] = round((r["monthPaid"] / month_total * 100), 1) if month_total else 0.0
+    return {
+        "date": date, "month": date[:7], "stores": rows,
+        "totals": {
+            "todayPaid": today_total, "todayOrders": sum(r["todayOrders"] for r in rows),
+            "monthPaid": month_total, "monthOrders": sum(r["monthOrders"] for r in rows),
+            "totalPaid": total_all, "totalOrders": sum(r["totalOrders"] for r in rows),
+            "storeCount": len(rows),
+        },
+    }

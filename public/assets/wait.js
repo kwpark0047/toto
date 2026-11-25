@@ -96,7 +96,7 @@
     $("#tkMeta").textContent = bits.join(" · ");
     const pre = $("#preorderBtn");
     if (pre) {
-      pre.href = "/?preorder=" + encodeURIComponent(ticket.token);
+      pre.href = "/order?preorder=" + encodeURIComponent(ticket.token);
       pre.classList.toggle("hidden", ["SEATED", "CANCELED", "NOSHOW"].includes(ticket.status));
     }
     const link = `${location.origin}/wait/t/${ticket.token}`;

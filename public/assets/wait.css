@@ -1,45 +1,96 @@
-/* 웨이팅 접수·보드 공통 (밝은 테마) */
-.whead { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px;
-         background: rgba(251,247,242,.95); backdrop-filter: blur(8px);
-         border-bottom: 1px solid var(--line); padding: 12px 16px; }
-.wlogo { width: 40px; height: 40px; border-radius: 13px; background: var(--brand); color: #fff;
-         display: grid; place-items: center; font-size: 21px; font-weight: 900; }
-.wwrap { max-width: 520px; margin: 0 auto; padding: 16px 16px 60px; }
-.wtitle { font-size: 24px; }
-.agree { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+/* ==========================================================================
+   웨이팅 접수 · 매장 보드
+   ========================================================================== */
+.whead {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 11px;
+  background: rgba(250, 248, 245, .88);
+  backdrop-filter: saturate(150%) blur(16px); -webkit-backdrop-filter: saturate(150%) blur(16px);
+  border-bottom: 1px solid rgba(216, 206, 192, .55);
+  padding: 13px 17px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset;
+}
+.wlogo {
+  width: 42px; height: 42px; border-radius: 14px;
+  background: linear-gradient(150deg, #c46336, var(--brand) 55%, var(--brand-deep));
+  color: #fff; display: grid; place-items: center; font-size: 21px; font-weight: 900;
+  font-family: var(--font-display);
+  box-shadow: 0 10px 20px -13px rgba(145, 64, 27, .9);
+}
+.wwrap { max-width: 530px; margin: 0 auto; padding: 20px 16px 64px; }
+.wtitle { font-size: 24px; letter-spacing: -.03em; }
+.agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
 .agree input { width: 22px; height: 22px; accent-color: var(--brand); margin-top: 2px; flex: none; }
-.msg { min-height: 20px; margin-top: 10px; color: var(--red); font-weight: 700; font-size: 15px; }
+.msg { min-height: 20px; margin-top: 10px; color: var(--red); font-weight: 700; font-size: 14px; }
 
-/* 번호표 */
-.ticket { padding: 20px 18px; text-align: center; background: linear-gradient(180deg, #fff 0%, var(--brand-soft) 100%); }
+/* ---------- 번호표 ---------- */
+.ticket {
+  padding: 24px 20px 22px; text-align: center;
+  background:
+    radial-gradient(420px 200px at 50% 0%, #fff6ee 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #fff 0%, var(--brand-soft) 100%);
+  border: 1px solid #f0ddcd;
+  position: relative; overflow: hidden;
+}
+.ticket::before, .ticket::after {
+  content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg); border: 1px solid #f0ddcd;
+  top: 50%; transform: translateY(-50%);
+}
+.ticket::before { left: -12px; }
+.ticket::after { right: -12px; }
 .tk-top { display: flex; align-items: center; justify-content: space-between; }
-.tk-store { font-weight: 800; color: var(--muted); font-size: 14px; }
-.tk-label { font-size: 13px; font-weight: 800; color: var(--brand); }
-.tk-no { font-size: 76px; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; margin: 6px 0 2px; color: var(--brand); }
-.tk-line { font-size: 22px; font-weight: 900; }
+.tk-store { font-weight: 800; color: var(--muted); font-size: 13px; letter-spacing: .02em; }
+.tk-label { font-size: 11.5px; font-weight: 800; color: var(--brand); letter-spacing: .16em; }
+.tk-no {
+  font-size: 78px; font-weight: 900; letter-spacing: -.05em; line-height: 1.02; margin: 8px 0 2px;
+  color: var(--brand-deep); font-variant-numeric: tabular-nums;
+}
+.tk-line { font-size: 21px; font-weight: 900; letter-spacing: -.02em; }
 .tk-line.called { color: var(--green); }
-.tk-status { margin-top: 8px; font-size: 15px; color: var(--muted); font-weight: 800; }
+.tk-status { margin-top: 9px; font-size: 14px; color: var(--muted); font-weight: 800; }
 .tk-status.called { color: var(--green); }
-.tk-meta { margin-top: 6px; font-size: 14px; color: var(--muted); }
+.tk-meta { margin-top: 7px; font-size: 13px; color: var(--muted); }
 
-/* 보드(디스플레이) */
-body.board { background: #14100d; color: #fdf6ec; }
-.board-head { display: flex; align-items: center; gap: 14px; padding: 18px 26px; border-bottom: 1px solid #2a2420; }
-.board-head .logo { width: 52px; height: 52px; border-radius: 16px; background: var(--brand); display: grid; place-items: center;
-                    font-size: 26px; font-weight: 900; color: #fff; }
-.board-head b { font-size: 26px; }
-.board-head .clock { margin-left: auto; font-size: 22px; color: #c8b9a9; font-weight: 800; }
-.board-main { padding: 22px 26px; display: grid; gap: 20px; }
-.board-call { background: #1f1913; border: 2px solid var(--brand); border-radius: 22px; padding: 18px 22px; }
-.board-call h2 { font-size: 20px; color: #ffb38a; letter-spacing: .04em; }
-.calls { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; }
-.call-no { font-size: 64px; font-weight: 900; color: #fff; letter-spacing: -.03em; }
-.board-wait { background: #1a1410; border-radius: 22px; padding: 18px 22px; }
-.board-wait h2 { font-size: 19px; color: #c8b9a9; }
-.numbers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.num-chip { min-width: 88px; padding: 12px 16px; border-radius: 16px; background: #241c16; text-align: center; }
-.num-chip b { display: block; font-size: 30px; font-weight: 900; }
-.num-chip span { font-size: 12.5px; color: #b5a596; }
-.board-foot { margin-top: auto; display: flex; gap: 18px; flex-wrap: wrap; color: #c8b9a9; font-size: 16px; padding: 0 26px 22px; }
+/* ---------- 보드(디스플레이) ---------- */
+body.board {
+  background:
+    radial-gradient(1200px 600px at 50% -260px, #2b2119 0%, rgba(17, 14, 12, 0) 70%),
+    #110e0c;
+  color: #fdf6ec;
+}
+.board-head {
+  display: flex; align-items: center; gap: 15px; padding: 20px 28px;
+  border-bottom: 1px solid #2a2420;
+}
+.board-head .logo {
+  width: 52px; height: 52px; border-radius: 16px;
+  background: linear-gradient(150deg, #c46336, var(--brand) 55%, var(--brand-deep));
+  display: grid; place-items: center; font-size: 26px; font-weight: 900; color: #fff;
+  font-family: var(--font-display);
+}
+.board-head b { font-size: 25px; letter-spacing: -.03em; }
+.board-head .clock { margin-left: auto; font-size: 21px; color: #c8b9a9; font-weight: 800; font-variant-numeric: tabular-nums; }
+.board-main { padding: 24px 28px; display: grid; gap: 20px; }
+.board-call {
+  background: linear-gradient(150deg, #241b14, #1b1510);
+  border: 1.5px solid var(--brand); border-radius: 24px; padding: 20px 24px;
+  box-shadow: 0 0 0 5px rgba(180, 85, 42, .08);
+}
+.board-call h2 { font-size: 18px; color: #ffb38a; letter-spacing: .12em; font-weight: 800; }
+.calls { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.call-no { font-size: 66px; font-weight: 900; color: #fff; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.board-wait { background: #1a1410; border: 1px solid #2c241d; border-radius: 24px; padding: 20px 24px; }
+.board-wait h2 { font-size: 17px; color: #c8b9a9; letter-spacing: .1em; font-weight: 800; }
+.numbers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.num-chip {
+  min-width: 90px; padding: 13px 17px; border-radius: 16px; background: #241c16;
+  text-align: center; border: 1px solid #302720;
+}
+.num-chip b { display: block; font-size: 30px; font-weight: 900; letter-spacing: -.03em; }
+.num-chip span { font-size: 12px; color: #b5a596; }
+.board-foot {
+  margin-top: auto; display: flex; gap: 18px; flex-wrap: wrap; color: #c8b9a9;
+  font-size: 15px; padding: 0 28px 24px;
+}
 .board-foot b { color: #fff; }
-.empty-board { color: #8d7d6e; font-size: 20px; padding: 12px 0; }
+.empty-board { color: #8d7d6e; font-size: 19px; padding: 12px 0; }

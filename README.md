@@ -28,7 +28,13 @@ python3 server.py --reset         # 데이터를 지우고 처음부터
 
 | 화면 | 주소 | 로그인/권한 |
 |---|---|---|
-| 매장 공통 (테이블 고르기) | `/` | 불필요 |
+| 서비스 메인(소개·애니메이션) | `/` | 불필요 |
+| 기능소개 | `/features` | 불필요 |
+| 매장위치(공개 매장 목록) | `/places` | 불필요 |
+| 요금제·문자 비용 계산 | `/pricing` | 불필요 |
+| 문의하기 | `/contact` | 불필요 |
+| 게시판(공지·후기·댓글) | `/board` | 불필요 |
+| 테이블 고르기(고객 진입) | `/order` | 불필요 |
 | 고객 메뉴 (테이블 QR·NFC) | `/t/<테이블코드>` (예: `/t/1`) | 불필요 |
 | 예약 신청(손님) | `/reserve` · 다른 매장 `/reserve?store=<id>` | 불필요 |
 | 웨이팅 접수 / 개인 링크 | `/wait` · `/wait/t/<토큰>` | 불필요 |
@@ -51,6 +57,35 @@ python3 server.py --reset         # 데이터를 지우고 처음부터
 | 내 계정(비밀번호) | `/account` | 로그인 |
 | QR·NFC·인쇄 | `/qr` | 설정 변경 |
 | 인쇄 미리보기 | `/print?kind=table&size=A5&layout=2` | 설정 변경 |
+
+### 로그인 · 소셜 로그인(구글·카카오)
+
+`/login` · `/signup` 한 화면에서 아이디 로그인과 회원가입을 탭으로 오갑니다. 비밀번호 보기 토글,
+입력 안내, 소셜 버튼(카카오 `#FEE500` · Google 공식 G 로고)이 함께 있습니다.
+
+소셜 로그인은 **앱 키(환경변수)를 넣으면 바로 동작**하고, 키가 없으면 가짜 로그인을 만들지 않고
+`configured: false` 와 "앱 키가 연결되지 않았습니다" 안내를 보여 줍니다.
+
+| 환경변수 | 필수 | 설명 |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | 구글 사용 시 | Google Cloud OAuth 2.0 클라이언트 ID |
+| `GOOGLE_CLIENT_SECRET` | 구글 사용 시 | 같은 클라이언트의 보안 비밀 |
+| `KAKAO_CLIENT_ID` | 카카오 사용 시 | 카카오 디벨로퍼스 **REST API 키**(앱 키) |
+| `KAKAO_CLIENT_SECRET` | 선택 | 카카오 '보안 → Client Secret'을 켠 경우에만 |
+| `OAUTH_BASE_URL` | 권장 | 공개 주소(예: `https://w-toto.vercel.app`). 없으면 요청 Host로 추론 |
+
+등록할 리다이렉트 URI(제공자 콘솔에 그대로 넣기):
+
+```
+https://<공개주소>/api/auth/oauth/google/callback
+https://<공개주소>/api/auth/oauth/kakao/callback
+```
+
+- `GET /api/auth/oauth/providers` — 제공자별 `configured`·리다이렉트 URI 확인(키 노출 없음).
+- `GET /api/auth/oauth/google|kakao` — 302로 제공자 인가 화면 이동(state 쿠키 10분, HttpOnly).
+- `GET /api/auth/oauth/<provider>/callback` — state 검증 → 토큰·프로필 교환 → `oauth_accounts` 연결 → 세션 쿠키.
+- 아직 사장님 계정이 없는 첫 방문이면 매장과 사장님 계정을 함께 만들고, 이미 매장이 있으면
+  연결되지 않은 소셜 계정으로 관리자 계정을 새로 만들지 않고 아이디 로그인을 안내합니다.
 
 ### 역할과 권한
 
@@ -124,7 +159,13 @@ python3 server.py --reset         # 데이터를 지우고 처음부터
 ### 매장(다점포) (`/stores`)
 - 매장 추가(상호·테이블 수·메뉴 새로/복사), 상단 **매장 전환**(관리자만), 사용 안 함.
 - **메뉴·주문·직원·회원·매출·재고·예약·리뷰·설정이 매장별로 분리** 저장·조회. 기존 데이터는 1번 매장 그대로.
-- 매장별 오늘/이번 달 매출·주문·메뉴·직원·테이블 **비교 표** 1개.
+- 선택한 매장 기준으로 `/tables`·`/qr`·`/menu`·`/staff`·`/revenue`가 모두 그 매장 데이터를 씁니다.
+- **전 매장 통합 대시보드**: 오늘·이번 달·누적 매출과 주문 합계, 매장별 매출 비중 막대·비교 표.
+- **메뉴 복사**: 원본→대상 매장, 전체/선택 메뉴, 같은 이름은 건너뛰기/덮어쓰기. 카테고리·가격·설명·옵션·사진·추천·원산지·알레르기까지 복사.
+  `GET /api/stores/menu?store=<id>`, `POST /api/stores/copy-menu`.
+- **직원 이동(발령)**: 역할·권한은 그대로 두고 소속 매장만 이동, 로그인 세션도 새 매장으로. `staff_transfers`에 이력.
+  `GET /api/stores/staff`, `POST /api/stores/transfer-staff`, `GET /api/stores/transfers`.
+- 통합 합계 API `GET /api/stores/summary`(매출 조회 권한), 메뉴 복사·직원 이동은 관리자(설정 변경 권한)만.
 - 매장 공통 QR은 `/?store=<id>`, 웨이팅 접수·보드는 `/wait?store=<id>` 로 그 매장 화면이 열립니다
   (1번 매장은 주소가 그대로 `/`, `/wait`).
 
@@ -149,6 +190,16 @@ python3 server.py --reset         # 데이터를 지우고 처음부터
   A4/B4 다중 배치, 화면 인쇄 + PDF.
 
 ---
+
+### 공개 포털 (`/` · `/features` · `/places` · `/pricing` · `/contact` · `/board`)
+- 상단 공통 내비게이션(모바일 햄버거)과 브랜드 `w-toto`. 로그인·회원가입 화면에도 같은 메뉴.
+- 메인: 손님 4단계(QR → 메뉴·음성 → 진행 현황 → 서빙)와 사장님 4단계(접수 → KDS → 매출·재고 → 단골)를
+  전환·자동 재생 애니메이션으로 설명. `prefers-reduced-motion`이면 자동 재생을 멈춥니다.
+- 매장위치: `GET /api/public/stores`(활성 매장의 공개 정보만 — 사업자번호·대표자 비노출), 지역·검색 필터.
+- 요금제: 무료 / 쿠폰 문자 종량(성공 건 20·17·15·13원, LMS 60·MMS 120원 예시) / 프리미엄(준비 중) + 발송량 시뮬레이터.
+- 문의: `POST /api/public/inquiries` → 접수번호(WT-YYYYMMDD-0001) 발급. 사장님 콘솔 `/settings`에서 `GET /api/inquiries`로 확인.
+- 게시판: `GET/POST /api/public/board`, `GET /api/public/board/<id>`, `POST /api/public/board/<id>/comments`.
+- 소개 페이지의 체험 링크는 실제 화면(`/t/1`, `/wait`, `/reserve`, 로그인 필요 화면)으로 연결됩니다.
 
 ## 3. 알림
 
@@ -176,11 +227,11 @@ python3 tools/check_pages.py                           # JS 문법·id·파일 �
 python3 tools/migration_check.py                       # 옛 DB(1번 매장) 마이그레이션 확인
 ```
 
-- `smoke_test.py` **330항목** 통과: 로그인·권한(역할 5종·예외)·직원·근태·스케줄·급여·비밀번호 초기화,
+- `smoke_test.py` **418항목** 통과: 로그인·**소셜 로그인(OAuth)**·권한(역할 5종·예외)·직원·근태·스케줄·급여·비밀번호 초기화,
   메뉴·추천·회원/포인트/등급·테이블·주문→주방 4단계→서빙→결제→매출·기간별 매출·CSV,
   재고(차감·복원·경고·품절 제안)·예약(신청→확정→도착/노쇼)·리뷰(등록·답글·숨김)·웨이팅·선주문,
-  손님 취소/호출·음성 해석·알림 채널·설정·QR 디코딩·인쇄물 PDF·**다점포 분리·전환**·백업 복원.
-- `dom_harness.py` **21화면** 렌더 통과(undefined/NaN/빈 화면 없음).
+  손님 취소/호출·음성 해석·알림 채널·설정·QR 디코딩·인쇄물 PDF·**다점포 분리·전환·메뉴 복사·직원 이동·통합 매출**·**공개 포털(매장·문의·게시판)**·백업 복원.
+- `dom_harness.py` **23화면** 렌더 통과(undefined/NaN/빈 화면 없음).
 - `migration_check.py`: 옛 DB(다점포·권한 컬럼 없음)를 열어 데이터 유지·컬럼 보충·매장 1 복원 확인.
 
 ---
@@ -203,7 +254,8 @@ python3 tools/migration_check.py                       # 옛 DB(1번 매장) 마
 | 음성·알림 | https 또는 localhost만. 아이폰은 홈 화면 추가 필요 |
 | 번역 품질 | 매장이 입력한 번역 그대로(자동 번역 없음) |
 | 접근성 실제 사용자 검증 | 미실시(스크린리더·키보드 실제 점검 필요) |
-| 실제 배포·도메인·DNS | 하지 않음. `배포-준비.md` 참고 |
+| 실제 배포·도메인·DNS | Vercel 자동배포 사용 중(`w-toto.vercel.app`). 자체 도메인·DNS는 `배포-준비.md` 참고 |
+| 구글·카카오 로그인 앱 키 | Vercel 환경변수에 등록해야 켜짐(현재 미등록 → 화면에 안내) |
 | 개인정보 처리방침 공시 | 초안만(`개인정보-처리방침-초안.md`, `/privacy`). 법률 검토 필요 |
 | 법적 표시(원산지·알레르기) 최종 확인 | **매장 몫**. 이 앱은 입력·표시 도구일 뿐 |
 | 화면 픽셀·실기기 검증 | 브라우저가 없는 환경이라 quickjs 렌더 검사만 함 |

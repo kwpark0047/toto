@@ -1,3 +1,9 @@
-/* 내 계정 화면 */
-.srow { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+/* ==========================================================================
+   내 계정
+   ========================================================================== */
+.srow {
+  display: flex; justify-content: space-between; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft); font-size: 14.5px;
+}
 .srow:last-child { border-bottom: 0; }
+.srow .k { color: var(--muted); }

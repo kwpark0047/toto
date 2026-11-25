@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf8f5">
+<title>맛집 · 테이블을 골라 주문</title>
+<link rel="stylesheet" href="/assets/base.css">
+<style>
+  body.entry {
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 520px at 50% -220px, #f8e7d5 0%, rgba(250, 248, 245, 0) 70%),
+      radial-gradient(700px 380px at 106% 6%, #f2ece0 0%, rgba(250, 248, 245, 0) 60%),
+      var(--bg);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .entry-top { width: 100%; max-width: 760px; padding: 18px 16px 0; display: flex; align-items: center; gap: 10px; }
+  .entry-top a { text-decoration: none; font-size: 13px; font-weight: 800; color: var(--muted); }
+  .entry-top a:hover { color: var(--brand-deep); }
+  .entry-top .home { margin-left: auto; }
+  .hero { text-align: center; padding: 26px 18px 6px; max-width: 640px; }
+  .hero .logo {
+    width: 72px; height: 72px; border-radius: 23px;
+    background: linear-gradient(150deg, #c46336, var(--brand) 55%, var(--brand-deep));
+    color: #fff; display: grid; place-items: center; margin: 0 auto 15px;
+    font-size: 36px; font-weight: 900; font-family: var(--font-display);
+    box-shadow: 0 22px 44px -24px rgba(145, 64, 27, .95), inset 0 1px 0 rgba(255, 255, 255, .26);
+  }
+  .hero .eyebrow { margin-bottom: 9px; }
+  .hero h1 { font-size: 30px; letter-spacing: -.04em; }
+  .hero p { color: var(--muted); margin: 9px 0 0; font-size: 15px; line-height: 1.6; }
+  .pick { width: 100%; max-width: 720px; margin: 22px auto 0; padding: 0 16px; }
+  .pick .card { padding: 22px 20px; }
+  .pick .card > b { font-size: 18px; letter-spacing: -.02em; }
+  .tables-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 10px; margin-top: 14px; }
+  .tbtn {
+    display: block; text-decoration: none; background: #fff;
+    border: 1px solid var(--line); border-radius: 16px; padding: 16px 10px; text-align: center;
+    box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 12px 26px -24px rgba(28,25,23,.6);
+    transition: transform .14s ease, border-color .14s ease, box-shadow .16s ease, color .14s ease;
+  }
+  .tbtn:hover {
+    border-color: var(--brand); color: var(--brand-deep);
+    box-shadow: 0 14px 30px -22px rgba(145, 64, 27, .7);
+    transform: translateY(-1px);
+  }
+  .tbtn b { display: block; font-size: 21px; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .tbtn span { font-size: 11.5px; color: var(--muted); }
+  .tbtn:active { transform: scale(.98); }
+  .manual { display: flex; gap: 8px; margin-top: 16px; }
+  .foot { text-align: center; color: var(--muted-2); font-size: 12.5px; padding: 30px 16px 44px; line-height: 1.8; }
+  .foot a { color: var(--brand-deep); font-weight: 800; text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body class="entry">
+<div class="entry-top">
+  <a href="/">← w-toto</a>
+  <a class="home" href="/features">기능소개</a>
+  <a href="/places">매장위치</a>
+  <a href="/login">사장님 로그인</a>
+</div>
+<header class="hero">
+  <div class="logo" id="logo">맛</div>
+  <div class="eyebrow">QR 메뉴판 · 테이블 주문</div>
+  <h1 id="storeName">맛집</h1>
+  <p id="storeLine">테이블을 고르고 메뉴를 주문하세요</p>
+</header>
+
+<div class="pick">
+  <div class="card">
+    <b>어느 테이블에 앉으셨나요?</b>
+    <p class="small muted" style="margin:6px 0 0">테이블 번호를 누르면 메뉴가 열립니다.</p>
+    <div class="tables-row" id="tableRow">불러오는 중…</div>
+    <div class="manual">
+      <input class="input grow" id="manualCode" placeholder="테이블 번호를 모르면 입력 (예: 3)" inputmode="numeric">
+      <button class="btn sm primary" id="manualGo">열기</button>
+    </div>
+    <p class="small muted" style="margin:13px 0 0" id="hoursLine"></p>
+  </div>
+</div>
+
+<p class="foot">
+  <span id="footNote">QR을 찍거나 NFC에 대면 이 화면이 열립니다.</span><br>
+  <a href="/wait">웨이팅 접수</a> · <a href="/reserve">예약 신청</a> · <a href="/login">사장님 로그인</a>
+</p>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/order.js"></script>
+</body>
+</html>

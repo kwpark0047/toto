@@ -162,6 +162,24 @@ def login(username, password, ip="", user_agent=""):
     return user, token, expires
 
 
+def login_staff(staff_id, ip="", user_agent=""):
+    """비밀번호 없이 세션을 만든다(소셜 로그인처럼 신원이 이미 확인된 경우).
+
+    소셜 계정은 oauth 모듈이 확인한 뒤 이 함수로 세션만 발급한다.
+    """
+    with store.read() as conn:
+        row = conn.execute("SELECT * FROM staff WHERE id=?", (staff_id,)).fetchone()
+    if not row:
+        raise AuthError("계정을 찾을 수 없습니다", 404)
+    if not row["active"]:
+        raise AuthError("사용하지 않는 계정입니다. 사장님에게 문의해 주세요")
+    store_id = row["store_id"] if "store_id" in row.keys() else 1
+    token, expires = _new_session(row["id"], ip, user_agent, store_id)
+    user = _user_row(row)
+    user["storeId"] = store_id
+    return user, token, expires
+
+
 def _new_session(staff_id, ip="", user_agent="", store_id=None):
     token = secrets.token_urlsafe(32)
     ts = store.now()

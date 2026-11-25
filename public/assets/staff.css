@@ -1,30 +1,43 @@
-/* 직원 관리: 권한 체크박스·스케줄 표 */
-.perm-box { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 6px; }
+/* ==========================================================================
+   직원 관리 — 권한 체크박스 · 스케줄 표
+   ========================================================================== */
+.perm-box { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; margin-top: 7px; }
 @media (max-width: 620px) { .perm-box { grid-template-columns: 1fr; } }
-.perm { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border: 1px solid var(--line);
-  border-radius: 10px; background: var(--surface); cursor: pointer; }
+.perm {
+  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer;
+  transition: border-color .14s ease, background .14s ease;
+}
+.perm:hover { border-color: var(--line-strong); background: #fdfbf8; }
 .perm input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand); }
-.perm span { display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.35; }
+.perm span { display: flex; flex-direction: column; font-size: 13px; line-height: 1.4; }
+.perm span b { font-weight: 800; }
 .perm.off { opacity: .55; }
-.reset-box { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--amber-soft);
-  border: 1px solid #f3ce8a; }
-.temp-pw { font-size: 18px; font-weight: 900; letter-spacing: 1px; background: #fff; padding: 2px 8px; border-radius: 8px; }
+.reset-box {
+  margin-top: 13px; padding: 11px 13px; border-radius: 13px; background: var(--amber-soft);
+  border: 1px solid #f0e0bc;
+}
+.temp-pw {
+  font-size: 17px; font-weight: 900; letter-spacing: 1.5px; background: #fff;
+  padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line);
+}
 
-.today-workers { margin-top: 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.tw { padding: 4px 9px; border-radius: 999px; background: var(--surface-2); font-weight: 700; }
+.today-workers { margin-top: 11px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tw { padding: 4px 10px; border-radius: 999px; background: var(--surface-2); font-weight: 700; }
 .tw.LATE { background: var(--red-soft); color: var(--red); }
 .tw.MISSING { background: var(--red-soft); color: var(--red); }
-.tw.OK { background: var(--green-soft); color: #1f6b38; }
+.tw.OK { background: var(--green-soft); color: var(--green); }
 
-.schedtable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
-.schedtable th, .schedtable td { border: 1px solid var(--line); padding: 6px; vertical-align: top; }
-.schedtable thead th { background: var(--surface-2); font-size: 12.5px; color: var(--muted); }
+.schedtable { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+.schedtable th, .schedtable td { border: 1px solid var(--line-soft); padding: 7px; vertical-align: top; }
+.schedtable thead th { background: var(--surface-2); font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
 .schedtable thead th.today { background: var(--amber-soft); color: #7a5310; }
-.schedtable .sname { text-align: left; min-width: 110px; background: var(--surface); }
-.schedtable .scell { cursor: pointer; height: 58px; min-width: 74px; }
-.schedtable .scell.empty .plus { color: #c9bbaa; }
-.schedtable .scell.LATE { background: #fdf0ef; }
-.schedtable .scell.MISSING { background: #fdeeee; }
-.schedtable .scell.OK { background: #f4fbf6; }
-.schedtable .sc-bad { color: var(--red); font-weight: 800; font-size: 11.5px; margin-top: 2px; }
-.schedtable .sc-ok { color: #2f7d4f; font-size: 11.5px; margin-top: 2px; }
+.schedtable .sname { text-align: left; min-width: 112px; background: var(--surface); font-weight: 800; }
+.schedtable .scell { cursor: pointer; height: 60px; min-width: 76px; transition: background .14s ease; }
+.schedtable .scell:hover { background: #fdfbf8; }
+.schedtable .scell.empty .plus { color: var(--muted-2); }
+.schedtable .scell.LATE { background: #fdf2f0; }
+.schedtable .scell.MISSING { background: #fcefee; }
+.schedtable .scell.OK { background: #f5fbf7; }
+.schedtable .sc-bad { color: var(--red); font-weight: 800; font-size: 11px; margin-top: 3px; }
+.schedtable .sc-ok { color: var(--green); font-size: 11px; margin-top: 3px; }

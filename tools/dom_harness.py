@@ -220,6 +220,9 @@ def main():
     reviews_data = client.get("/api/reviews")
     stores_data = client.get("/api/stores")
     comparison = client.get("/api/stores/comparison")
+    store_summary = client.get("/api/stores/summary")
+    store_staff = client.get("/api/stores/staff")
+    store_transfers = client.get("/api/stores/transfers")
     sessions = client.get("/api/account/sessions")
     staff_meta = client.get("/api/staff/permissions")
     schedule = client.get("/api/schedule")
@@ -301,9 +304,15 @@ def main():
                                  ("reviewList", [], [])], path="/reviews")))
 
     results.append(("매장 관리", run("stores.js", {"/api/auth/me": me, "/api/stores": stores_data,
-                                              "/api/stores/comparison": comparison},
+                                              "/api/stores/comparison": comparison,
+                                              "/api/stores/summary": store_summary,
+                                              "/api/stores/staff": store_staff,
+                                              "/api/stores/transfers": store_transfers},
                                     [("compare", ["오늘 매출"], ["undefined"]),
-                                     ("storeList", ["매장"], [])], path="/stores")))
+                                     ("summaryStats", ["오늘 통합 매출", "누적 매출"], []),
+                                     ("shareBox", [], ["undefined"]),
+                                     ("storeList", ["매장"], []),
+                                     ("transferLog", [], ["undefined"])], path="/stores")))
 
     results.append(("내 계정", run("account.js", {"/api/auth/me": me, "/api/account/sessions": sessions},
                                   [("who", ["아이디"], ["undefined"]),
@@ -335,8 +344,21 @@ def main():
     results.append(("대기 접수", run("wait.js", {"/api/auth/me": me, "/api/wait/board": board},
                                      [("wstore", ["맛집"], [])], path="/wait")))
 
-    results.append(("매장 공통 진입", run("index.js", {"/api/tables/public": client.get("/api/tables/public")},
-                                          [("tableRow", ["/t/"], ["undefined"])], path="/")))
+    results.append(("테이블 선택(/order)", run("order.js", {"/api/tables/public": client.get("/api/tables/public")},
+                                             [("tableRow", ["/t/"], ["undefined"])], path="/order")))
+
+    results.append(("매장위치", run("places.js", {"/api/public/stores": client.get("/api/public/stores")},
+                                     [("placeGrid", ["운양동", "/t/"], ["undefined"]),
+                                      ("placeCount", ["곳"], [])], path="/places")))
+
+    results.append(("게시판", run("board.js", {"/api/public/board": client.get("/api/public/board")},
+                                    [("postList", ["시작합니다", "공지"], ["undefined"]),
+                                     ("postCount", ["건"], [])], path="/board")))
+
+    results.append(("요금제 계산", run("pricing.js", {},
+                                     [("simTotal", ["20,000"], ["undefined"]),
+                                      ("simRate", ["20원"], []),
+                                      ("simVat", ["22,000원"], [])], path="/pricing")))
 
     print()
     for name, ok in results:

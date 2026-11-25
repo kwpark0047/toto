@@ -1,55 +1,67 @@
-/* 메뉴 관리 */
-.msec { margin-top: 18px; }
-.msec .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.msec .hd h2 { font-size: 20px; }
+/* ==========================================================================
+   메뉴 관리
+   ========================================================================== */
+.msec { margin-top: 22px; }
+.msec .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.msec .hd h2 { font-size: 19px; letter-spacing: -.02em; display: flex; align-items: baseline; gap: 7px; }
+.msec .hd h2::before {
+  content: ""; display: inline-block; width: 14px; height: 2px; background: var(--brand);
+  border-radius: 2px; align-self: center;
+}
 .msec .hd .badge { font-weight: 800; }
 
 .mrow {
-  display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--line);
-  border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 13px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 15px; padding: 11px 14px; margin-bottom: 9px;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+.mrow:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
 .mrow .th {
-  width: 72px; height: 60px; border-radius: 10px; overflow: hidden; background: var(--surface-2);
-  flex: none; display: grid; place-items: center; color: #c2ae9a; font-size: 22px;
+  width: 74px; height: 60px; border-radius: 11px; overflow: hidden; background: var(--surface-2);
+  flex: none; display: grid; place-items: center; color: var(--muted-2); font-size: 21px;
 }
 .mrow .th img { width: 100%; height: 100%; object-fit: cover; }
 .mrow .info { min-width: 0; flex: 1; }
-.mrow .nm { font-size: 16.5px; font-weight: 800; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.mrow .ds { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
-.mrow .pr { font-weight: 900; font-size: 16px; margin-top: 2px; }
-.mrow .acts { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.mrow .acts .btn { min-height: 38px; padding: 0 11px; font-size: 14px; }
-.mrow.out { background: #faf7f3; }
-.mrow.out .th img { filter: grayscale(1); opacity: .6; }
+.mrow .nm { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; letter-spacing: -.02em; }
+.mrow .ds { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; margin-top: 1px; }
+.mrow .pr { font-weight: 900; font-size: 15.5px; margin-top: 3px; letter-spacing: -.02em; }
+.mrow .acts { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.mrow .acts .btn { min-height: 36px; padding: 0 11px; font-size: 13.5px; }
+.mrow.out { background: #fbf8f4; }
+.mrow.out .th img { filter: grayscale(1); opacity: .55; }
 .icon-btn {
-  width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--line);
-  background: #fff; font-size: 15px; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line-strong);
+  background: #fff; font-size: 14px; display: grid; place-items: center;
+  transition: background .14s ease;
 }
-.switch { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.icon-btn:hover { background: var(--surface-2); }
+.switch { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
 .switch input { width: 20px; height: 20px; accent-color: var(--brand); }
 
-.photo-edit { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+.photo-edit { display: flex; gap: 15px; align-items: flex-start; margin-bottom: 18px; }
 .ph-prev {
-  width: 132px; height: 99px; border-radius: 12px; background: var(--surface-2);
-  display: grid; place-items: center; font-size: 30px; color: #c2ae9a; overflow: hidden; flex: none;
+  width: 136px; height: 102px; border-radius: 13px; background: var(--surface-2);
+  display: grid; place-items: center; font-size: 28px; color: var(--muted-2);
+  overflow: hidden; flex: none; border: 1px solid var(--line);
 }
 .ph-prev img { width: 100%; height: 100%; object-fit: cover; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
 
-.opt-editor .og { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.opt-editor .og { background: var(--surface-2); border-radius: 13px; padding: 11px 13px; margin-bottom: 9px; }
 .opt-editor .og .row { gap: 8px; margin-bottom: 8px; }
 .opt-editor .og input { min-height: 42px; font-size: 15px; }
-.opt-editor .og .rm { border: 0; background: #fff; border-radius: 8px; width: 34px; height: 34px; }
-.opt-editor .og .choices { font-size: 13px; color: var(--muted); }
+.opt-editor .og .rm { border: 0; background: #fff; border-radius: 9px; width: 34px; height: 34px; }
+.opt-editor .og .choices { font-size: 12.5px; color: var(--muted); }
 
-.cat-list .cl { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.cat-list .cl { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
 .cat-list .cl input { min-height: 42px; }
-.cat-list .cl .cnt { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.cat-list .cl .cnt { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 
 .sheet.wide { max-width: 640px; }
 @media (max-width: 720px) {
   .mrow { flex-wrap: wrap; }
-  .mrow .info { flex-basis: calc(100% - 84px); }
-  .mrow .acts { width: 100%; justify-content: flex-start; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .mrow .info { flex-basis: calc(100% - 88px); }
+  .mrow .acts { width: 100%; justify-content: flex-start; border-top: 1px dashed var(--line); padding-top: 9px; }
+  .mrow .ds { max-width: none; }
 }

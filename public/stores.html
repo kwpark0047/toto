@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#fbf7f2">
+<meta name="theme-color" content="#faf8f5">
 <title>맛집 · 매장 관리</title>
 <link rel="stylesheet" href="/assets/base.css">
 <link rel="stylesheet" href="/assets/admin.css">
@@ -14,33 +14,62 @@
 <main class="wrap page">
   <div class="page-head">
     <div>
+      <div class="kicker">멀티 매장</div>
       <h1>매장 관리</h1>
-      <p>매장마다 메뉴·주문·직원·매출이 따로 저장됩니다. 위쪽 매장 선택으로 일하는 매장을 바꿉니다.</p>
+      <p>계정 하나로 여러 매장을 만들고 전환합니다. 테이블·QR·메뉴·직원·매출은 선택한 매장 기준으로 따로 움직입니다.</p>
     </div>
-    <div class="row" style="margin-left:auto;gap:8px">
+    <div class="row" style="margin-left:auto;gap:8px;flex-wrap:wrap">
+      <button class="btn sm ghost" id="copyBtn">메뉴 복사</button>
+      <button class="btn sm ghost" id="moveBtn">직원 이동</button>
       <button class="btn sm primary" id="addBtn">+ 매장 추가</button>
     </div>
   </div>
 
-  <div class="card pad" style="margin-bottom:14px">
-    <h3 style="font-size:18px;margin-bottom:8px">매장별 오늘 요약 비교</h3>
+  <section class="summary-board" id="summaryBoard">
+    <div class="summary-head">
+      <div>
+        <div class="kicker">전 매장 합계</div>
+        <h2 id="summaryTitle">오늘의 통합 매출</h2>
+      </div>
+      <span class="badge line" id="summaryDate">–</span>
+    </div>
+    <div class="stats" id="summaryStats"></div>
+    <div class="share-box" id="shareBox"></div>
+  </section>
+
+  <div class="card pad" style="margin:14px 0">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">매장별 상세 비교</h3>
+      <span class="small muted">오늘 · 이번 달 · 누적</span>
+    </div>
     <div id="compare"></div>
   </div>
 
-  <div class="card" style="overflow:hidden">
+  <div class="card" style="overflow:hidden;margin-bottom:14px">
     <div class="row between" style="padding:14px 16px"><h3 style="font-size:18px">매장 목록</h3>
       <span class="badge line" id="storeCount">0곳</span></div>
     <div id="storeList"></div>
   </div>
 
-  <p class="small muted" style="margin-top:14px;line-height:1.6">
-    · 새 매장은 기본 메뉴와 테이블이 함께 만들어집니다(다른 매장 메뉴를 복사할 수도 있습니다).<br>
-    · 기존 매장 데이터는 그대로 유지됩니다. 매장을 지우는 기능은 없고 ‘사용 안 함’으로만 바꿉니다.<br>
-    · 매장 전환은 관리자만 할 수 있습니다.
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">직원 이동 이력</h3>
+      <span class="small muted">최근 50건</span>
+    </div>
+    <div id="transferLog" class="small muted">불러오는 중…</div>
+  </div>
+
+  <p class="small muted" style="margin-top:14px;line-height:1.7">
+    · 새 매장은 기본 메뉴와 테이블이 함께 만들어집니다. 기존 매장 메뉴를 골라 복사할 수도 있습니다.<br>
+    · 메뉴 복사는 카테고리·가격·설명·옵션·사진·추천까지 옮기고, 같은 이름은 건너뛰기/덮어쓰기를 고를 수 있습니다.<br>
+    · 직원 이동은 역할·권한을 그대로 두고 소속 매장만 바꿉니다. 로그인 중인 기기도 새 매장을 보게 되며 이력이 남습니다.<br>
+    · 기존 매장 데이터는 그대로 유지됩니다. 매장을 지우는 기능은 없고 ‘사용 안 함’으로만 바꿉니다.
   </p>
 </main>
 
 <div class="sheet-back" id="back"></div>
+
+<!-- 매장 추가/수정 -->
 <div class="sheet" id="storeSheet" role="dialog" aria-label="매장 정보">
   <div class="sheet-head"><h3 id="stTitle">매장 추가</h3><button class="x" data-close>✕</button></div>
   <div class="sheet-body">
@@ -59,6 +88,60 @@
     <p class="small muted" id="stHint">만든 뒤 위쪽 매장 선택에서 새 매장으로 바꾸면 그 매장 화면이 됩니다.</p>
   </div>
   <div class="sheet-foot"><button class="btn primary" id="stSave" style="width:100%">매장 만들기</button></div>
+</div>
+
+<!-- 메뉴 복사 -->
+<div class="sheet wide" id="copySheet" role="dialog" aria-label="메뉴 복사">
+  <div class="sheet-head"><h3>매장 간 메뉴 복사</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <div class="grid2">
+      <div class="field"><label for="cpFrom">원본 매장</label><select class="select" id="cpFrom"></select></div>
+      <div class="field"><label for="cpTo">대상 매장</label><select class="select" id="cpTo"></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="cpScope">복사 범위</label>
+        <select class="select" id="cpScope">
+          <option value="all">전체 메뉴</option>
+          <option value="pick">직접 고르기</option>
+        </select></div>
+      <div class="field"><label for="cpDup">같은 이름 메뉴가 있으면</label>
+        <select class="select" id="cpDup">
+          <option value="skip">건너뛰기 (그대로 두기)</option>
+          <option value="overwrite">덮어쓰기 (원본 내용으로)</option>
+        </select></div>
+    </div>
+    <div class="field" id="cpPickBox">
+      <label>복사할 메뉴 <span class="muted small" id="cpPickState"></span></label>
+      <div id="cpItems" class="cp-items small muted">원본 매장을 고르면 메뉴가 나옵니다.</div>
+    </div>
+    <div class="alert tip" id="cpNote" style="margin-top:4px">
+      카테고리·가격·설명·옵션·사진·추천·원산지·알레르기가 함께 복사됩니다.
+    </div>
+    <div class="msg" id="cpMsg" style="min-height:18px;color:var(--red);font-weight:700"></div>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn ghost" data-close>취소</button>
+    <button class="btn primary grow" id="cpSave">복사하기</button>
+  </div>
+</div>
+
+<!-- 직원 이동 -->
+<div class="sheet" id="moveSheet" role="dialog" aria-label="직원 이동">
+  <div class="sheet-head"><h3>직원 매장 이동</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label for="mvStaff">직원</label><select class="select" id="mvStaff"></select></div>
+    <div class="field"><label for="mvTo">옮길 매장</label><select class="select" id="mvTo"></select></div>
+    <div class="field"><label for="mvNote">메모 (선택)</label>
+      <input class="input" id="mvNote" maxlength="200" placeholder="예: 2호점 오픈 준비"></div>
+    <p class="small muted" style="line-height:1.6">
+      역할과 권한은 그대로 두고 소속 매장만 바꿉니다. 로그인 중인 기기는 다음 요청부터 새 매장을 보게 됩니다.
+    </p>
+    <div class="msg" id="mvMsg" style="min-height:18px;color:var(--red);font-weight:700"></div>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn ghost" data-close>취소</button>
+    <button class="btn primary grow" id="mvSave">이동하기</button>
+  </div>
 </div>
 
 <script src="/assets/util.js"></script>

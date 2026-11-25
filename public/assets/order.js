@@ -1,8 +1,14 @@
-// 매장 공통 진입(/) — 손님이 테이블을 고른다
+// 매장 공통 진입(/order) — 손님이 테이블을 고른다
 (() => {
   const PREORDER = new URLSearchParams(location.search).get("preorder") || "";
   const STORE = new URLSearchParams(location.search).get("store") || "";
-  const link = (code) => "/t/" + encodeURIComponent(code) + (PREORDER ? "?preorder=" + encodeURIComponent(PREORDER) : "");
+  const storeQ = STORE ? `store=${encodeURIComponent(STORE)}` : "";
+  const link = (code) => {
+    const params = [];
+    if (PREORDER) params.push("preorder=" + encodeURIComponent(PREORDER));
+    if (storeQ) params.push(storeQ);
+    return "/t/" + encodeURIComponent(code) + (params.length ? "?" + params.join("&") : "");
+  };
 
   async function init() {
     try {
