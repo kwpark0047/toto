@@ -245,7 +245,7 @@ body.portal {
 .slip-state::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 .slip-state[data-state="cooking"] { color: #fbbf24; }
 .slip-state[data-state="done"] { color: #6ee7b7; }
-.slip-state[data-state="paid"] { color: #93c5fd; }
+.slip-state[data-state="paid"] { color: #6ee7b7; }
 
 /* 주방 티켓 */
 .ticket {
@@ -341,8 +341,8 @@ body.portal {
 .feed.fade { opacity: .25; }
 .board-play {
   flex: none; border: 1px solid rgba(148, 163, 184, .3); background: transparent;
-  color: #cbd5e1; border-radius: 5px; padding: 3px 7px;
-  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .06em;
+  color: #cbd5e1; border-radius: 5px; padding: 4px 9px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .04em;
   transition: border-color .15s ease, color .15s ease;
 }
 .board-play:hover { border-color: #6ee7b7; color: #6ee7b7; }

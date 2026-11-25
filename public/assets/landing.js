@@ -96,7 +96,7 @@
   function boardSetRunning(on) {
     board.running = on;
     if (el.play) {
-      el.play.textContent = on ? "⏸ 일시정지" : "▶ 재생";
+      el.play.textContent = on ? "일시정지" : "다시 재생";
       el.play.setAttribute("aria-pressed", on ? "true" : "false");
     }
     if (on) boardStart(); else boardStop();
