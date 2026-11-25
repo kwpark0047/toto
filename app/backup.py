@@ -19,6 +19,15 @@ KEEP = 7
 FMT = "%Y%m%d-%H%M%S"
 
 
+TURSO_NOTICE = ("Turso(영구 DB) 연결에서는 파일 백업을 쓸 수 없습니다. "
+                "Turso 콘솔의 백업 기능을 사용해 주세요.")
+
+
+def _guard():
+    if store.using_turso():
+        raise RuntimeError(TURSO_NOTICE)
+
+
 def backup_dir():
     path = os.path.join(os.path.dirname(config.DB_PATH), "backups")
     os.makedirs(path, exist_ok=True)
@@ -27,6 +36,7 @@ def backup_dir():
 
 def create(tag="manual"):
     """지금 DB 를 data/backups/backup-<태그>-<시각>.db 로 복사하고 오래된 파일을 정리한다."""
+    _guard()
     ts = datetime.now(store.TZ).strftime(FMT)
     name = f"backup-{tag}-{ts}.db"
     path = os.path.join(backup_dir(), name)
@@ -74,7 +84,9 @@ def prune(keep=KEEP, protect=None):
 
 
 def daily():
-    """하루 1회 자동 백업. 이미 오늘 것이 있으면 건너뛴다."""
+    """하루 1회 자동 백업. Turso 모드에서는 파일이 없으므로 건너뛴다."""
+    if store.using_turso():
+        return None
     today = store.today().replace("-", "")
     for name in os.listdir(backup_dir()):
         if name.startswith(f"backup-daily-{today}"):
@@ -84,6 +96,7 @@ def daily():
 
 def restore(name, confirm=None):
     """백업 파일로 되돌린다. confirm 이 '복원'이 아니면 거부한다."""
+    _guard()
     if confirm != "복원":
         raise ValueError("복원하려면 확인 문구에 '복원'이라고 입력해 주세요")
     path = os.path.join(backup_dir(), os.path.basename(name))
@@ -110,6 +123,7 @@ def restore(name, confirm=None):
 
 def export_bytes():
     """내려받기용 현재 DB 바이트(일관된 스냅숏)."""
+    _guard()
     import tempfile
     fd, tmp = tempfile.mkstemp(suffix=".db")
     os.close(fd)

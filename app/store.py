@@ -1,12 +1,18 @@
 """데이터 저장 계층.
 
-- SQLite 파일 하나(data/mangjip.db)에 모든 데이터를 저장한다.
+- 기본은 SQLite 파일 하나(data/mangjip.db)에 모든 데이터를 저장한다.
+- 환경변수 TURSO_DATABASE_URL · TURSO_AUTH_TOKEN 이 모두 있으면(Vercel)
+  Turso(libSQL) HTTP v2 pipeline 으로 붙어 영구 저장소로 동작한다.
 - 다른 모듈은 이 파일의 connect()/tx() 를 통해서만 DB에 접근한다.
 - 'rev' 값은 화면 폴링용 변경 번호다. 데이터가 바뀔 때마다 1씩 올린다.
 - 스키마를 바꿀 때는 SCHEMA 에 더하고, 이미 있는 DB 는 _migrate() 가 컬럼을 채워 준다.
 """
+import base64
+import json
 import os
 import sqlite3
+import urllib.error
+import urllib.request
 from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -386,7 +392,449 @@ def today():
     return datetime.now(TZ).strftime("%Y-%m-%d")
 
 
+# ==========================================================================
+# Turso(libSQL) — Vercel serverless 영구 DB (HTTP v2 pipeline)
+#
+# 외부 패키지 없이 urllib 로 https://<host>/v2/pipeline 을 호출한다.
+# - 읽기 결과가 필요할 때까지 문장을 모아 한 번에 보낸다(왕복 비용 절감).
+# - 자동 커밋 묶음은 BEGIN … COMMIT 을 한 요청에 넣어 원자적으로 처리한다.
+# - `with conn:` / store.tx() 안에서는 baton 으로 스트림을 이어 트랜잭션을 유지한다.
+# ==========================================================================
+_TURSO_TIMEOUT = 30          # 초
+_TURSO_CHUNK = 70            # 한 pipeline 에 넣는 문장 수 상한
+
+
+def _turso_conf():
+    url = (os.environ.get("TURSO_DATABASE_URL") or "").strip()
+    token = (os.environ.get("TURSO_AUTH_TOKEN") or "").strip()
+    return url, token
+
+
+def using_turso():
+    """환경변수가 모두 있을 때만 Turso 모드. 없으면 기존 SQLite 파일."""
+    url, token = _turso_conf()
+    return bool(url and token)
+
+
+def backend():
+    return "turso" if using_turso() else "sqlite"
+
+
+def _turso_endpoint():
+    url = _turso_conf()[0]
+    if url.startswith("libsql://"):
+        url = "https://" + url[len("libsql://"):]
+    elif url.startswith("wss://"):
+        url = "https://" + url[len("wss://"):]
+    elif url.startswith("ws://"):
+        url = "http://" + url[len("ws://"):]
+    url = url.rstrip("/")
+    if url.endswith("/v2/pipeline"):
+        return url
+    return url + "/v2/pipeline"
+
+
+class TursoError(Exception):
+    """Turso/libSQL 이 돌려준 오류."""
+
+
+def _encode_value(value):
+    if value is None:
+        return {"type": "null"}
+    if isinstance(value, bool):
+        return {"type": "integer", "value": "1" if value else "0"}
+    if isinstance(value, int):
+        return {"type": "integer", "value": str(value)}
+    if isinstance(value, float):
+        return {"type": "float", "value": value}
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return {"type": "blob", "base64": base64.b64encode(bytes(value)).decode("ascii")}
+    return {"type": "text", "value": str(value)}
+
+
+def _decode_value(cell):
+    if not isinstance(cell, dict):
+        return cell
+    kind = cell.get("type")
+    if kind == "null":
+        return None
+    if kind == "integer":
+        try:
+            return int(cell.get("value") or 0)
+        except (TypeError, ValueError):
+            return 0
+    if kind == "float":
+        try:
+            return float(cell.get("value") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+    if kind == "text":
+        return cell.get("value") or ""
+    if kind == "blob":
+        try:
+            return base64.b64decode(cell.get("base64") or "")
+        except (ValueError, TypeError):
+            return b""
+    return cell.get("value")
+
+
+class TursoRow:
+    """sqlite3.Row 처럼 이름(row["id"])과 순서(row[0]) 모두로 읽는 행."""
+
+    __slots__ = ("_cols", "_values", "_index")
+
+    def __init__(self, cols, values):
+        self._cols = tuple(cols)
+        self._values = tuple(values)
+        self._index = {name: i for i, name in enumerate(self._cols)}
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            try:
+                return self._values[self._index[key]]
+            except KeyError:
+                raise IndexError(f"no such column: {key}")
+        if isinstance(key, slice):
+            return self._values[key]
+        return self._values[key]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __contains__(self, key):
+        return key in self._index
+
+    def keys(self):
+        return list(self._cols)
+
+    def __repr__(self):
+        return "TursoRow(" + ", ".join(f"{k}={v!r}" for k, v in zip(self._cols, self._values)) + ")"
+
+
+def _split_sql(script):
+    """executescript 용 문장 분리. 문자열·주석 안의 세미콜론은 나누지 않는다."""
+    out, buf = [], []
+    quote = None
+    i, n = 0, len(script or "")
+    while i < n:
+        ch = script[i]
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                if i + 1 < n and script[i + 1] == quote:
+                    buf.append(script[i + 1])
+                    i += 2
+                    continue
+                quote = None
+            i += 1
+            continue
+        if ch in ("'", '"', "`"):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if ch == "-" and script.startswith("--", i):
+            j = script.find("\n", i)
+            if j < 0:
+                break
+            i = j + 1
+            continue
+        if ch == "/" and script.startswith("/*", i):
+            j = script.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if ch == ";":
+            text = "".join(buf).strip()
+            if text:
+                out.append(text)
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    text = "".join(buf).strip()
+    if text:
+        out.append(text)
+    return out
+
+
+class _TursoStmt:
+    __slots__ = ("sql", "params", "cols", "rows", "rowcount", "lastrowid")
+
+    def __init__(self, sql, params=()):
+        raw = str(sql or "").strip()
+        head = raw.upper().replace("\n", " ")
+        if head.startswith("PRAGMA JOURNAL_MODE") or head.startswith("PRAGMA FOREIGN_KEYS"):
+            # Turso 는 이 PRAGMA 를 허용하지 않는다(서버가 이미 WAL·FK 기본).
+            raw = "SELECT 1"
+        self.sql = raw
+        self.params = tuple(params or ())
+        self.cols = []
+        self.rows = []
+        self.rowcount = -1
+        self.lastrowid = None
+
+
+def _turso_call(requests, baton=None):
+    """POST /v2/pipeline → (baton, results)"""
+    url, token = _turso_conf()
+    if not url or not token:
+        raise TursoError("Turso 환경변수가 없습니다")
+    payload = {"requests": requests}
+    if baton:
+        payload["baton"] = baton
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        _turso_endpoint(), data=data, method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=_TURSO_TIMEOUT) as res:
+            raw = res.read()
+    except urllib.error.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", "replace")
+        except Exception:
+            pass
+        message = body
+        try:
+            parsed = json.loads(body)
+            message = parsed.get("error") or parsed.get("message") or body
+        except (ValueError, AttributeError):
+            pass
+        raise TursoError(f"Turso HTTP {exc.code}: {message}") from exc
+    except urllib.error.URLError as exc:
+        raise TursoError(f"Turso 연결 실패: {exc.reason}") from exc
+    try:
+        parsed = json.loads(raw.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise TursoError("Turso 응답을 해석하지 못했습니다") from exc
+    return parsed.get("baton"), parsed.get("results") or []
+
+
+def _exec_request(stmt):
+    return {
+        "type": "execute",
+        "stmt": {
+            "sql": stmt.sql,
+            "args": [_encode_value(p) for p in stmt.params],
+            "want_rows": True,
+        },
+    }
+
+
+def _apply_result(stmt, result):
+    if not isinstance(result, dict):
+        raise TursoError("Turso 결과 형식이 올바르지 않습니다")
+    if result.get("type") == "error":
+        err = result.get("error") or {}
+        message = err.get("message") or err.get("code") or "Turso 실행 오류"
+        raise TursoError(str(message))
+    response = result.get("response") or {}
+    payload = response.get("result") or {}
+    cols = [c.get("name") for c in (payload.get("cols") or [])]
+    stmt.cols = cols
+    stmt.rows = [TursoRow(cols, [_decode_value(v) for v in raw])
+                 for raw in (payload.get("rows") or [])]
+    affected = payload.get("affected_row_count")
+    stmt.rowcount = int(affected) if affected is not None else -1
+    rowid = payload.get("last_insert_rowid")
+    if rowid is not None:
+        try:
+            stmt.lastrowid = int(rowid)
+        except (TypeError, ValueError):
+            stmt.lastrowid = None
+
+
+class TursoCursor:
+    def __init__(self, conn, stmt):
+        self._conn = conn
+        self._stmt = stmt
+        self._pos = 0
+
+    def _ready(self):
+        self._conn._flush()
+
+    def fetchone(self):
+        self._ready()
+        rows = self._stmt.rows
+        if self._pos < len(rows):
+            row = rows[self._pos]
+            self._pos += 1
+            return row
+        return None
+
+    def fetchall(self):
+        self._ready()
+        rows = self._stmt.rows[self._pos:]
+        self._pos = len(self._stmt.rows)
+        return rows
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+    def close(self):
+        pass
+
+    @property
+    def lastrowid(self):
+        self._ready()
+        return self._stmt.lastrowid
+
+    @property
+    def rowcount(self):
+        self._ready()
+        return self._stmt.rowcount
+
+    @property
+    def description(self):
+        self._ready()
+        return tuple((name, None, None, None, None, None, None)
+                     for name in self._stmt.cols)
+
+
+class TursoConnection:
+    """sqlite3.Connection 의 쓰임새만 흉내 내는 경량 래퍼."""
+
+    def __init__(self):
+        self._pending = []
+        self._baton = None
+        self._tx = False
+        self._closed = False
+        self.row_factory = TursoRow
+
+    # ---- 문장 모으기 -------------------------------------------------
+    def execute(self, sql, params=()):
+        if self._closed:
+            raise TursoError("닫힌 연결입니다")
+        stmt = _TursoStmt(sql, params)
+        self._pending.append(stmt)
+        return TursoCursor(self, stmt)
+
+    def executemany(self, sql, seq_of_params):
+        cur = None
+        for params in seq_of_params:
+            cur = self.execute(sql, params)
+        if cur is None:
+            cur = self.execute(sql, ())
+        return cur
+
+    def executescript(self, script):
+        last = None
+        for text in _split_sql(script):
+            last = self.execute(text)
+        return last
+
+    # ---- 실행 ---------------------------------------------------------
+    def _flush(self):
+        if not self._pending:
+            return
+        batch, self._pending = self._pending, []
+        if self._tx:
+            self._flush_tx(batch)
+        else:
+            self._flush_auto(batch)
+
+    def _flush_auto(self, batch):
+        for start in range(0, len(batch), _TURSO_CHUNK):
+            chunk = batch[start:start + _TURSO_CHUNK]
+            requests = [{"type": "execute", "stmt": {"sql": "BEGIN"}}]
+            requests += [_exec_request(s) for s in chunk]
+            requests.append({"type": "execute", "stmt": {"sql": "COMMIT"}})
+            requests.append({"type": "close"})
+            _, results = _turso_call(requests)
+            if results and isinstance(results[0], dict) and results[0].get("type") == "error":
+                # BEGIN 이 거부되면(이미 트랜잭션 등) 트랜잭션 없이 한 번만 다시 보낸다.
+                requests = [_exec_request(s) for s in chunk] + [{"type": "close"}]
+                _, results = _turso_call(requests)
+                offset = 0
+            else:
+                offset = 1
+            for i, stmt in enumerate(chunk):
+                if offset + i >= len(results):
+                    raise TursoError("Turso 응답이 일부만 돌아왔습니다")
+                _apply_result(stmt, results[offset + i])
+
+    def _flush_tx(self, batch):
+        for start in range(0, len(batch), _TURSO_CHUNK):
+            chunk = batch[start:start + _TURSO_CHUNK]
+            requests = []
+            offset = 0
+            if self._baton is None:
+                requests.append({"type": "execute", "stmt": {"sql": "BEGIN"}})
+                offset = 1
+            requests += [_exec_request(s) for s in chunk]
+            try:
+                baton, results = _turso_call(requests, self._baton)
+            except Exception:
+                self._end_tx("ROLLBACK", ignore_errors=True)
+                raise
+            self._baton = baton
+            for i, stmt in enumerate(chunk):
+                if offset + i >= len(results):
+                    self._end_tx("ROLLBACK", ignore_errors=True)
+                    raise TursoError("Turso 응답이 일부만 돌아왔습니다")
+                try:
+                    _apply_result(stmt, results[offset + i])
+                except TursoError:
+                    self._end_tx("ROLLBACK", ignore_errors=True)
+                    raise
+
+    def _end_tx(self, sql, ignore_errors=False):
+        if self._baton is None:
+            return
+        baton, self._baton = self._baton, None
+        try:
+            _turso_call([{"type": "execute", "stmt": {"sql": sql}},
+                         {"type": "close"}], baton)
+        except TursoError:
+            if not ignore_errors:
+                raise
+
+    # ---- 트랜잭션 -----------------------------------------------------
+    def commit(self):
+        self._flush()
+        self._end_tx("COMMIT")
+
+    def rollback(self):
+        self._pending = []
+        self._end_tx("ROLLBACK", ignore_errors=True)
+
+    def close(self):
+        if self._closed:
+            return
+        try:
+            self._flush()
+        finally:
+            self._end_tx("ROLLBACK", ignore_errors=True)
+            self._closed = True
+
+    def __enter__(self):
+        self._tx = True
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type is None:
+                self.commit()
+            else:
+                self.rollback()
+        finally:
+            self._tx = False
+        return False
+
+
 def connect():
+    if using_turso():
+        return TursoConnection()
     os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
     conn = sqlite3.connect(config.DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
@@ -478,10 +926,45 @@ def _columns(conn, table):
     return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
 
 
+def _table_columns(conn, tables):
+    """여러 테이블의 컬럼을 한 번에 읽는다(Turso 왕복 절감).
+
+    PRAGMA 를 모아 두었다가 첫 fetch 에서 한 pipeline 으로 보낸다.
+    서버가 PRAGMA table_info 를 거부하면 table-valued 함수로 다시 시도한다.
+    """
+    names = list(dict.fromkeys(tables))
+    try:
+        cursors = {t: conn.execute(f"PRAGMA table_info({t})") for t in names}
+        return {t: {r["name"] for r in cursors[t].fetchall()} for t in names}
+    except Exception:
+        cursors = {t: conn.execute("SELECT name FROM pragma_table_info(?)", (t,))
+                   for t in names}
+        return {t: {r["name"] for r in cursors[t].fetchall()} for t in names}
+
+
 def _migrate(conn):
-    for table, col, ddl in _ADDED_COLUMNS:
-        if col not in _columns(conn, table):
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+    tables = [table for table, _col, _ddl in _ADDED_COLUMNS]
+    have = _table_columns(conn, tables)
+    missing = [(t, c, d) for t, c, d in _ADDED_COLUMNS if c not in have.get(t, set())]
+    if missing:
+        # 평소에는 한 번에 보낸다. 동시에 콜드 스타트한 다른 인스턴스가 같은 컬럼을
+        # 먼저 추가해 실패하면, 실제로 생겼는지 확인하며 하나씩 다시 시도한다.
+        try:
+            for table, col, ddl in missing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            for table, col, ddl in missing:
+                if col in _table_columns(conn, [table]).get(table, set()):
+                    continue
+                try:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    if col not in _table_columns(conn, [table]).get(table, set()):
+                        raise
     # 기존 주문은 할인 전 금액을 몰라 total = subtotal 로 채운다
     conn.execute("UPDATE orders SET subtotal = total WHERE subtotal = 0 AND points_used = 0")
     # 회원 연락처는 이제 매장별로 유일하다(같은 번호가 두 매장에 있어도 된다)
@@ -508,25 +991,64 @@ def _ensure_stores(conn):
         pass
     ts = now()
     conn.execute(
-        "INSERT INTO stores(id, name, tagline, address, phone, active, created_at, updated_at)"
+        "INSERT OR IGNORE INTO stores(id, name, tagline, address, phone, active, created_at, updated_at)"
         " VALUES(1,?,?,?,'',1,?,?)",
         (name, config.STORE.get("tagline") or "", config.STORE.get("address") or "", ts, ts))
 
 
 def init():
     """스키마 생성 + 비어 있으면 기본 데이터를 넣는다."""
-    os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
+    if not using_turso():
+        os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
     conn = connect()
     try:
         conn.executescript(SCHEMA)
         conn.commit()
         _migrate(conn)
-        if conn.execute("SELECT COUNT(*) c FROM menu_items WHERE store_id=1").fetchone()["c"] == 0:
-            seed(conn)
-        if conn.execute("SELECT COUNT(*) c FROM dining_tables WHERE store_id=1").fetchone()["c"] == 0:
-            seed_tables(conn)
-        if conn.execute("SELECT COUNT(*) c FROM board_posts").fetchone()["c"] == 0:
-            seed_board(conn)
+        counts = conn.execute(
+            "SELECT (SELECT COUNT(*) FROM menu_items WHERE store_id=1) AS items,"
+            " (SELECT COUNT(*) FROM dining_tables WHERE store_id=1) AS tbls,"
+            " (SELECT COUNT(*) FROM board_posts) AS posts"
+        ).fetchone()
+        need_seed = bool(
+            not counts
+            or int(counts["items"] or 0) == 0
+            or int(counts["tbls"] or 0) == 0
+            or int(counts["posts"] or 0) == 0
+        )
+        if need_seed:
+            # 동시에 콜드 스타트한 인스턴스가 같은 기본 데이터를 두 번 넣지 않도록 한 번만 잡는다.
+            lock = conn.execute(
+                "INSERT INTO meta(key, value) VALUES('seed_lock','1')"
+                " ON CONFLICT(key) DO NOTHING")
+            conn.commit()
+            mine = lock.rowcount > 0
+            if not mine:
+                import time
+                for _ in range(3):
+                    time.sleep(0.15)
+                    again = conn.execute(
+                        "SELECT (SELECT COUNT(*) FROM menu_items WHERE store_id=1) AS items,"
+                        " (SELECT COUNT(*) FROM dining_tables WHERE store_id=1) AS tbls,"
+                        " (SELECT COUNT(*) FROM board_posts) AS posts"
+                    ).fetchone()
+                    if again and int(again["items"] or 0) > 0 and int(again["tbls"] or 0) > 0:
+                        counts = again
+                        break
+                else:
+                    mine = True
+            if mine:
+                counts = conn.execute(
+                    "SELECT (SELECT COUNT(*) FROM menu_items WHERE store_id=1) AS items,"
+                    " (SELECT COUNT(*) FROM dining_tables WHERE store_id=1) AS tbls,"
+                    " (SELECT COUNT(*) FROM board_posts) AS posts"
+                ).fetchone()
+                if not counts or int(counts["items"] or 0) == 0:
+                    seed(conn)
+                if not counts or int(counts["tbls"] or 0) == 0:
+                    seed_tables(conn)
+                if not counts or int(counts["posts"] or 0) == 0:
+                    seed_board(conn)
         conn.execute(
             "INSERT INTO meta(key, value) VALUES('rev','1') ON CONFLICT(key) DO NOTHING"
         )

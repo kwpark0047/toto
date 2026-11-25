@@ -225,6 +225,7 @@ python3 tools/smoke_test.py http://127.0.0.1:8010      # HTTP 전 기능
 python3 tools/dom_harness.py http://127.0.0.1:8010     # 화면 JS 렌더 검사(quickjs)
 python3 tools/check_pages.py                           # JS 문법·id·파일 참조
 python3 tools/migration_check.py                       # 옛 DB(1번 매장) 마이그레이션 확인
+python3 tools/turso_check.py                            # Turso HTTP 드라이버(가짜 pipeline 서버로 검증)
 ```
 
 - `smoke_test.py` **418항목** 통과: 로그인·**소셜 로그인(OAuth)**·권한(역할 5종·예외)·직원·근태·스케줄·급여·비밀번호 초기화,
@@ -233,6 +234,7 @@ python3 tools/migration_check.py                       # 옛 DB(1번 매장) 마
   손님 취소/호출·음성 해석·알림 채널·설정·QR 디코딩·인쇄물 PDF·**다점포 분리·전환·메뉴 복사·직원 이동·통합 매출**·**공개 포털(매장·문의·게시판)**·백업 복원.
 - `dom_harness.py` **23화면** 렌더 통과(undefined/NaN/빈 화면 없음).
 - `migration_check.py`: 옛 DB(다점포·권한 컬럼 없음)를 열어 데이터 유지·컬럼 보충·매장 1 복원 확인.
+- `turso_check.py`: sqlite3 위에 `/v2/pipeline` 을 흉내 낸 서버로 Turso 모드의 스키마 생성·시드·CRUD·트랜잭션 롤백·백업 가드를 확인.
 
 ---
 
@@ -255,6 +257,7 @@ python3 tools/migration_check.py                       # 옛 DB(1번 매장) 마
 | 번역 품질 | 매장이 입력한 번역 그대로(자동 번역 없음) |
 | 접근성 실제 사용자 검증 | 미실시(스크린리더·키보드 실제 점검 필요) |
 | 실제 배포·도메인·DNS | Vercel 자동배포 사용 중(`w-toto.vercel.app`). 자체 도메인·DNS는 `배포-준비.md` 참고 |
+| 운영 DB | Vercel 환경변수 `TURSO_DATABASE_URL`·`TURSO_AUTH_TOKEN` 이 있으면 Turso(libSQL) 영구 DB. 없으면 `/tmp` SQLite(재배포 시 초기화) |
 | 구글·카카오 로그인 앱 키 | Vercel 환경변수에 등록해야 켜짐(현재 미등록 → 화면에 안내) |
 | 개인정보 처리방침 공시 | 초안만(`개인정보-처리방침-초안.md`, `/privacy`). 법률 검토 필요 |
 | 법적 표시(원산지·알레르기) 최종 확인 | **매장 몫**. 이 앱은 입력·표시 도구일 뿐 |
