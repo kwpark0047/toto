@@ -576,7 +576,7 @@ body.portal {
 .console-top b { color: #e2e8f0; letter-spacing: .04em; }
 .console-top .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-2); }
 .console-top .right-tag { margin-left: auto; color: #6ee7b7; }
-.console .scene { display: none; padding: 13px; flex: 1; flex-direction: column; position: relative; }
+.console .scene { display: none; padding: 13px; flex: 1; flex-direction: column; justify-content: center; position: relative; }
 .console-foot {
   position: relative; display: flex; gap: 12px; flex-wrap: wrap;
   border-top: 1px solid rgba(148, 163, 184, .16); background: rgba(2, 6, 23, .45);
