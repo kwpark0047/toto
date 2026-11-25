@@ -129,11 +129,9 @@ body.portal {
   border-bottom: 1px solid var(--line);
   overflow: hidden;
   /* 격자는 배경 레이어로만 그린다 — 글자 위에 겹치는 의사요소를 두지 않는다. */
-  background-image:
-    linear-gradient(to right, rgba(15, 23, 42, .05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, .05) 1px, transparent 1px);
-  background-size: 56px 56px, 56px 56px;
-  background-position: center top, center top;
+  background-image: linear-gradient(to right, rgba(15, 23, 42, .045) 1px, transparent 1px);
+  background-size: 72px 100%;
+  background-position: center top;
 }
 .hero .portal-wrap { position: relative; z-index: 1; }
 .hero-split {
@@ -784,10 +782,8 @@ body.portal {
 .page-hero {
   padding: 54px 0 34px; border-bottom: 1px solid var(--line);
   position: relative; overflow: hidden;
-  background-image:
-    linear-gradient(to right, rgba(15, 23, 42, .045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, .045) 1px, transparent 1px);
-  background-size: 56px 56px, 56px 56px;
+  background-image: linear-gradient(to right, rgba(15, 23, 42, .045) 1px, transparent 1px);
+  background-size: 72px 100%;
 }
 .page-hero .ph-grid {
   position: relative; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
