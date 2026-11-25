@@ -29,7 +29,7 @@
 }
 .order.new::before {
   content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
-  border-radius: 1px; background: linear-gradient(180deg, #d07447, var(--brand));
+  border-radius: 1px; background: linear-gradient(180deg, #10b981, var(--brand-deep));
 }
 @keyframes pop { from { transform: scale(.992); opacity: .6; } to { transform: none; opacity: 1; } }
 .order .hd { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }

@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#faf8f5">
+<meta name="theme-color" content="#0f172a">
 <meta name="description" content="w-toto QR 메뉴판을 쓰는 매장 목록 — 지역·이름으로 찾고 바로 주문·웨이팅·예약으로 이동하세요.">
-<title>매장위치 · w-toto QR 메뉴판</title>
+<title>매장위치 · w-toto</title>
 <link rel="stylesheet" href="/assets/base.css">
 <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body class="portal">
 <header class="site-nav">
   <div class="nav-inner">
-    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span></a>
+    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>table order os</i></span></a>
     <nav class="nav-links" aria-label="주요 메뉴">
       <a href="/features">기능소개</a>
       <a href="/places" class="on" aria-current="page">매장위치</a>
@@ -41,18 +41,30 @@
 <main class="portal-main">
   <section class="page-hero">
     <div class="portal-wrap">
-      <div class="eyebrow">매장위치</div>
-      <h1>지금 주문할 수 있는 매장</h1>
-      <p>w-toto를 쓰는 매장 목록입니다. 매장을 고르면 그 매장의 주문 화면·웨이팅·예약으로 바로 이동합니다.</p>
+      <div class="ph-grid">
+        <div>
+          <div class="kicker">DIRECTORY / STORES</div>
+          <h1>지금 주문할 수 있는<br><em>매장</em>을 찾습니다.</h1>
+        </div>
+        <div class="ph-side">
+          <p>w-toto를 쓰는 매장 목록입니다. 매장을 고르면 그 매장의 주문·웨이팅·예약 화면으로 바로 이동합니다.</p>
+          <div class="ph-facts">
+            <div>목록 기준<b>공개 정보만</b></div>
+            <div>주문 주소<b>/t/번호</b></div>
+            <div>지역 필터<b>주소 기준</b></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="lp-sec tight">
     <div class="portal-wrap">
+      <div class="sec-index"><b>01</b>SEARCH<span class="line"></span><span id="placeCount">–</span></div>
+
       <div class="places-bar">
         <input class="input grow" id="placeSearch" type="search" placeholder="매장 이름·주소로 찾기" aria-label="매장 검색">
         <div class="region-chips" id="regionChips"></div>
-        <span class="badge line" id="placeCount">–</span>
       </div>
 
       <div class="place-grid" id="placeGrid">

@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#faf8f5">
+<meta name="theme-color" content="#0f172a">
 <meta name="description" content="w-toto 게시판 — 공지, 업데이트, 매장 후기와 댓글.">
-<title>게시판 · w-toto QR 메뉴판</title>
+<title>게시판 · w-toto</title>
 <link rel="stylesheet" href="/assets/base.css">
 <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body class="portal">
 <header class="site-nav">
   <div class="nav-inner">
-    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span></a>
+    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>table order os</i></span></a>
     <nav class="nav-links" aria-label="주요 메뉴">
       <a href="/features">기능소개</a>
       <a href="/places">매장위치</a>
@@ -41,9 +41,20 @@
 <main class="portal-main">
   <section class="page-hero">
     <div class="portal-wrap">
-      <div class="eyebrow">게시판</div>
-      <h1>공지 · 업데이트 · 매장 후기</h1>
-      <p>새 기능 소식과 매장 이야기를 모았습니다. 궁금한 점은 댓글로 남겨 주세요.</p>
+      <div class="ph-grid">
+        <div>
+          <div class="kicker">BOARD / NOTICE · UPDATE · REVIEW</div>
+          <h1>공지 · 업데이트 ·<br><em>매장 후기</em>.</h1>
+        </div>
+        <div class="ph-side">
+          <p>새 기능 소식과 매장 이야기를 모았습니다. 궁금한 점은 댓글로 남겨 주세요.</p>
+          <div class="ph-facts">
+            <div>분류<b>3종</b></div>
+            <div>댓글<b>누구나</b></div>
+            <div>공개 범위<b>전체 공개</b></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -52,17 +63,18 @@
       <div class="board-bar">
         <div class="chips" id="catChips"></div>
         <span class="grow"></span>
-        <span class="badge line" id="postCount">–</span>
+        <span class="badge line mono" id="postCount">–</span>
         <button class="btn sm primary" id="writeToggle" type="button">글쓰기</button>
       </div>
 
       <div class="post-list" id="postList">
-        <div class="post"><span class="cat">공지</span><div><h3>불러오는 중…</h3></div><span class="count"></span></div>
+        <div class="post"><span class="cat">공지</span><span><h3>불러오는 중…</h3></span><span class="count"></span></div>
       </div>
 
       <div class="post-detail hidden" id="postView"></div>
 
       <div class="write-card hidden" id="writeCard">
+        <div class="sec-index" style="margin-bottom:16px"><b>NEW</b>WRITE A POST<span class="line"></span></div>
         <h2>새 글 쓰기</h2>
         <p class="small muted" style="margin:6px 0 16px">작성한 글과 이름은 게시판에 공개됩니다. 개인정보(전화번호·주소)는 쓰지 마세요.</p>
         <form id="writeForm" novalidate>

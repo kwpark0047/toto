@@ -36,7 +36,7 @@
   backdrop-filter: blur(10px);
 }
 .sendbar .btn { margin-left: auto; background: rgba(255, 255, 255, .14); border-color: transparent; color: #fff; }
-.sendbar .btn.primary { background: linear-gradient(150deg, #cf7547, var(--brand)); border-color: var(--brand); }
+.sendbar .btn.primary { background: linear-gradient(150deg, #059669, var(--brand-deep)); border-color: var(--brand); }
 .sendbar .btn[disabled] { opacity: .5; }
 
 @media (max-width: 760px) {

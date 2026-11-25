@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#faf8f5">
-<meta name="description" content="w-toto — 테이블 QR·NFC로 주문부터 주방·결제·매출·단골 관리까지. 설치비·월 이용료 없이 시작하는 QR 메뉴판.">
-<title>w-toto · QR 메뉴판 — 주문부터 단골까지</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="description" content="w-toto — 테이블 QR·NFC 주문이 주방·매출·재고·단골 데이터를 동시에 움직입니다. 설치비 0원, 월 이용료 0원.">
+<title>w-toto · 주문은 식탁에서, 판단은 숫자에서</title>
 <link rel="stylesheet" href="/assets/base.css">
 <link rel="stylesheet" href="/assets/portal.css">
 </head>
@@ -14,7 +14,7 @@
   <div class="nav-inner">
     <a class="nav-brand" href="/">
       <span class="nav-logo">w</span>
-      <span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span>
+      <span class="nav-word"><b>w-toto</b><i>table order os</i></span>
     </a>
     <nav class="nav-links" aria-label="주요 메뉴">
       <a href="/features">기능소개</a>
@@ -43,173 +43,259 @@
 </header>
 
 <main class="portal-main">
-  <!-- Hero -->
-  <section class="lp-hero">
+  <!-- ============================================================ 히어로 -->
+  <section class="hero">
     <div class="portal-wrap">
-      <div class="hero-grid">
+      <div class="hero-split">
         <div class="hero-copy">
-          <div class="eyebrow">QR 메뉴판 · 테이블 주문 · 주방 · 매출</div>
-          <h1>QR 하나로,<br><em>주문부터 단골까지</em></h1>
+          <div class="eyebrow">QR · NFC TABLE ORDER / MULTI-STORE OPS</div>
+          <h1>주문은 식탁에서,<br><em>판단은 숫자에서.</em></h1>
           <p class="lead">
-            테이블의 QR을 찍으면 메뉴가 열리고, 주문은 주방 화면으로 바로 갑니다.
-            결제를 확인하면 매출·포인트·재고가 함께 정리되는 식당 운영 도구입니다.
+            테이블의 QR 한 장이 주문이 되고, 그 주문이 주방 화면·매출 합계·재고·단골 기록을
+            동시에 움직입니다. 사장님은 오늘 무엇이 팔렸고 무엇을 준비해야 하는지,
+            한 화면에서 판단합니다.
           </p>
           <div class="cta-row">
-            <a class="btn primary lp-btn-lg" href="/signup">무료로 매장 시작</a>
-            <a class="btn lp-btn-lg" href="/t/1">손님 화면 바로 체험</a>
+            <a class="btn primary lp-btn-lg" href="/signup">무료로 매장 열기</a>
+            <a class="btn lp-btn-lg" href="/t/1">3초 주문 체험 →</a>
           </div>
-          <div class="trust">
-            <span>설치비 0원</span>
-            <span>월 이용료 0원</span>
-            <span>5분이면 첫 주문</span>
-            <span>카드 수수료 없음</span>
+          <div class="hero-meta">
+            <div>설치비<b>0원</b></div>
+            <div>월 이용료<b>0원</b></div>
+            <div>첫 주문까지<b>5분</b></div>
+            <div>메뉴 언어<b>한·영·중·일</b></div>
           </div>
+          <p class="hero-note">시제품 안내 — 실제 카드 결제(PG)와 문자 발송은 대행사 연결 전까지 기록만 남습니다.</p>
         </div>
 
-        <div class="hero-art" aria-hidden="true">
-          <div class="hero-phone">
-            <div class="notch"></div>
-            <div class="screen">
-              <div class="hp-head">
-                <span class="dot">맛</span>
-                <div><b>운양동 맛집</b><span>테이블 3번 · 김포 운양동</span></div>
-              </div>
-              <div class="hp-tabs"><i class="on">분식</i><i>한식</i><i>사이드</i><i>음료</i></div>
-              <div class="hp-menu">
-                <div class="hp-card"><span class="ph"></span><div><b>김밥</b><span>3,500원</span></div><span class="plus">+</span></div>
-                <div class="hp-card"><span class="ph"></span><div><b>떡볶이</b><span>4,500원 · 보통</span></div><span class="plus">+</span></div>
-                <div class="hp-card"><span class="ph"></span><div><b>비빔밥</b><span>8,000원</span></div><span class="plus">+</span></div>
-              </div>
-              <div class="hp-cart"><span>2개 · 8,000원</span><b>장바구니</b><span class="go">주문하기</span></div>
-            </div>
+        <!-- 실시간 매장 연결 보드 -->
+        <aside class="board" aria-label="실시간 매장 연결 보드 (시뮬레이션)">
+          <div class="board-top">
+            <span class="board-live"><i></i>LIVE SYNC</span>
+            <span class="board-title">운양동 맛집 · 3개 매장 연결</span>
+            <span class="board-clock" id="boardClock">12:04</span>
           </div>
-          <div class="hero-float f1"><div class="k">새 주문</div><div class="v">3번 테이블 <small>방금</small></div></div>
-          <div class="hero-float f2"><div class="k">오늘 매출</div><div class="v">￦412,000 <small>+12%</small></div></div>
-          <div class="hero-float f3"><div class="k">주방 대기</div><div class="v">4건 <small>평균 6분</small></div></div>
-        </div>
+          <div class="board-grid">
+            <section class="lane">
+              <div class="lane-head"><span>01</span>테이블 03</div>
+              <div class="lane-body">
+                <div class="slip" id="boardSlip">
+                  <div class="slip-row new"><span>떡볶이 ×2</span><b>9,000</b></div>
+                  <div class="slip-row new"><span>김밥 ×1</span><b>3,500</b></div>
+                  <div class="slip-row"><span>테이블 03 · 홀</span><b>—</b></div>
+                </div>
+                <div class="slip-total"><span>합계</span><b id="boardTotal">12,500</b></div>
+                <div class="slip-state" id="boardOrderState" data-state="sent">주문 전송</div>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head"><span>02</span>주방 KDS</div>
+              <div class="lane-body">
+                <div class="ticket">
+                  <div class="ticket-top"><b>#A-104</b><span id="boardTimer">00:00</span></div>
+                  <ul class="rail" id="boardRail">
+                    <li data-step="1"><i></i>접수</li>
+                    <li data-step="2"><i></i>조리</li>
+                    <li data-step="3"><i></i>서빙</li>
+                    <li data-step="4"><i></i>결제</li>
+                  </ul>
+                  <div class="ticket-items" id="boardItems">떡볶이 ×2 · 김밥 ×1</div>
+                </div>
+                <div class="alarm" id="boardAlarm">⚠ 알레르기 · 난류 확인</div>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head"><span>03</span>다점포 합산</div>
+              <div class="lane-body">
+                <div class="store-total">
+                  <span>오늘 매출 합계</span>
+                  <b id="boardRevenue">412,000</b>
+                  <em id="boardDelta">3개 매장 동기화 중</em>
+                </div>
+                <div class="spark" id="boardSpark" aria-hidden="true">
+                  <i style="height:34%"></i><i style="height:52%"></i><i style="height:41%"></i>
+                  <i style="height:66%"></i><i style="height:58%"></i><i style="height:74%"></i>
+                  <i style="height:63%"></i><i style="height:81%"></i><i style="height:70%"></i>
+                  <i style="height:88%"></i><i style="height:79%"></i><i class="last" style="height:92%"></i>
+                </div>
+                <ul class="store-rows" id="boardStores">
+                  <li class="hot"><span>운양동 본점</span><b>182,000</b></li>
+                  <li><span>당산점</span><b>148,000</b></li>
+                  <li><span>수원점</span><b>82,000</b></li>
+                </ul>
+              </div>
+            </section>
+          </div>
+          <div class="board-foot">
+            <div class="feed" id="boardFeed"><span>12:04:02</span>테이블 03 · 떡볶이 2 · 김밥 1 · 주문 전송</div>
+            <button class="board-play" id="boardPlay" type="button" aria-pressed="true">⏸ 일시정지</button>
+          </div>
+        </aside>
       </div>
     </div>
   </section>
 
-  <!-- 애니메이션 설명 -->
-  <section class="lp-sec" id="explain">
+  <!-- ============================================================ 이중 시선 -->
+  <section class="duo lp-sec" id="flow">
     <div class="portal-wrap">
-      <div class="sec-head center">
-        <div class="eyebrow">어떻게 쓰나요</div>
-        <h2>손님은 3번 누르고,<br>사장님은 화면 하나로</h2>
-        <p>손님 흐름과 사장님 흐름을 4단계로 나눠 보여 드립니다. 아래 단계를 눌러도 바로 넘어갑니다.</p>
+      <div class="duo-head">
+        <div class="sec-head">
+          <div class="eyebrow">01 — two angles</div>
+          <h2>같은 주문 하나를,<br>두 사람의 시선으로</h2>
+          <p>손님이 보는 화면과 사장님이 보는 화면은 같은 주문을 공유합니다.
+            탭을 바꾸면 두 시선이 어떻게 맞물려 돌아가는지 보입니다.</p>
+        </div>
+        <div class="duo-switch" role="tablist" aria-label="시선 선택" id="duoSwitch">
+          <button class="flow-tab on" type="button" role="tab" aria-selected="true" data-flow="guest">이용고객</button>
+          <button class="flow-tab" type="button" role="tab" aria-selected="false" data-flow="owner">사장님</button>
+        </div>
       </div>
 
-      <div style="text-align:center">
-        <div class="flow-switch" role="tablist" aria-label="흐름 선택">
-          <button class="flow-tab on" data-flow="guest" role="tab" aria-selected="true">이용고객</button>
-          <button class="flow-tab" data-flow="owner" role="tab" aria-selected="false">사장님</button>
+      <!-- 두 줄 타임라인: 손님 레인과 매장 레인이 같은 박자로 -->
+      <div class="timeline" id="duoTimeline" aria-label="주문 흐름 타임라인">
+        <div class="tl-row guest">
+          <span class="tl-label">손님</span>
+          <div class="tl-track">
+            <button class="tl-node on" type="button" data-step="0"><i>1</i><b>QR 접촉</b></button>
+            <button class="tl-node" type="button" data-step="1"><i>2</i><b>메뉴 선택</b></button>
+            <button class="tl-node" type="button" data-step="2"><i>3</i><b>조리 현황</b></button>
+            <button class="tl-node" type="button" data-step="3"><i>4</i><b>결제·적립</b></button>
+          </div>
+        </div>
+        <div class="tl-row owner">
+          <span class="tl-label">매장</span>
+          <div class="tl-track">
+            <button class="tl-node on" type="button" data-step="0"><i>1</i><b>주문 접수</b></button>
+            <button class="tl-node" type="button" data-step="1"><i>2</i><b>KDS 조리</b></button>
+            <button class="tl-node" type="button" data-step="2"><i>3</i><b>매출 반영</b></button>
+            <button class="tl-node" type="button" data-step="3"><i>4</i><b>재방문 쿠폰</b></button>
+          </div>
         </div>
       </div>
 
       <div class="flow-stage">
         <div class="flow-copy">
           <div class="eyebrow" id="flowKicker">이용고객 흐름</div>
-          <h3 id="flowTitle">테이블에서 QR만 찍으면 끝</h3>
-          <p id="flowDesc">앱 설치도, 회원가입도 없습니다. 테이블의 QR·NFC를 대면 그 테이블 메뉴가 바로 열립니다.</p>
+          <h3 id="flowTitle">테이블에 앉아 QR만 찍으면 메뉴가 열립니다</h3>
+          <p id="flowDesc">앱 설치도, 회원가입도 없습니다. 테이블의 QR·NFC를 대면 그 테이블의 메뉴판이 바로 열리고, 사진·원산지·알레르기까지 한 화면에서 확인합니다.</p>
           <div class="flow-steps" id="flowSteps"></div>
           <div class="flow-foot">
             <a class="btn sm primary" href="/t/1">손님 화면 체험</a>
-            <a class="btn sm ghost" href="/features">기능 자세히</a>
-            <span class="muted">· 결제·문자는 시제품 단계입니다</span>
+            <a class="btn sm ghost" href="/features">기능 색인</a>
+            <span class="muted">· 결제·문자는 시제품 단계</span>
           </div>
         </div>
 
-        <div class="flow-art" data-flow="guest" aria-hidden="true">
-          <!-- 손님: 휴대폰 -->
+        <div class="flow-art" data-flow="guest">
+          <!-- 손님 시선: 영수증 테이프 -->
           <div class="dev on" data-flow="guest">
-            <div class="phone-frame">
-              <div class="screen">
-                <div class="scene on" data-scene="1">
-                  <div class="qr-stage">
-                    <div class="qr-box">
-                      <div class="mosaic"></div>
-                      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span>
-                      <div class="scan"></div>
-                    </div>
-                    <div class="qr-caption"><b>3번 테이블</b>QR을 비추면 메뉴가 열립니다</div>
-                  </div>
+            <div class="receipt">
+              <div class="receipt-top"><b>W-TOTO</b><span>TABLE 03 · 12:04</span></div>
+              <div class="scene on" data-scene="1">
+                <div class="rc-table">테이블 03</div>
+                <div class="rc-sub">NFC · QR · 앱 설치 없음</div>
+                <div class="rc-rule"></div>
+                <div class="rc-line"><span>메뉴</span><b>16개 · 사진·원산지</b></div>
+                <div class="rc-line"><span>표시</span><b>알레르기 · 매운맛 3단계</b></div>
+                <div class="rc-line"><span>언어</span><b>한국어 · English · 中文 · 日本語</b></div>
+                <div class="rc-rule"></div>
+                <span class="rc-tag">3초 만에 열림</span>
+                <div class="rc-foot">종이 메뉴판을 걷어도, QR은 그대로</div>
+              </div>
+              <div class="scene" data-scene="2">
+                <div class="rc-sub">주문서 / 2개</div>
+                <div class="rc-rule"></div>
+                <div class="rc-line"><span>떡볶이 ×2 <span class="dim">매운맛</span></span><b>9,000</b></div>
+                <div class="rc-line"><span>김밥 ×1 <span class="dim">기본</span></span><b>3,500</b></div>
+                <div class="rc-rule"></div>
+                <div class="rc-line"><span>합계</span><b>12,500</b></div>
+                <div class="rc-line dim"><span>옵션 · 사리 추가 없음</span><span></span></div>
+                <div class="rc-rule"></div>
+                <div class="rc-voice">
+                  <span class="wave"><i></i><i></i><i></i><i></i></span>
+                  “떡볶이 두 개, 매운맛으로”
                 </div>
-                <div class="scene" data-scene="2">
-                  <div class="mini-head">오늘의 메뉴</div>
-                  <div class="mini-row"><span class="ph"></span><div><b>김밥</b><span>3,500원</span></div><span class="add">+</span></div>
-                  <div class="mini-row picked"><span class="ph"></span><div><b>떡볶이</b><span>4,500원 · 매운맛</span></div><span class="add">+</span></div>
-                  <div class="mini-row"><span class="ph"></span><div><b>비빔밥</b><span>8,000원</span></div><span class="add">+</span></div>
-                  <div class="voice-chip"><span class="wave"><i></i><i></i><i></i><i></i></span> “떡볶이 두 개 매운맛으로”</div>
+                <div class="rc-foot">말로 담아도, 손으로 담아도 같은 주문</div>
+              </div>
+              <div class="scene" data-scene="3">
+                <div class="rc-sub">주문 #A-104 · 진행</div>
+                <div class="rc-rule"></div>
+                <div class="rc-steps">
+                  <div class="rc-step done"><i></i><b>접수 완료</b><span>12:04</span></div>
+                  <div class="rc-step done"><i></i><b>조리 시작</b><span>12:05</span></div>
+                  <div class="rc-step now"><i></i><b>조리 중</b><span>약 6분</span></div>
+                  <div class="rc-step"><i></i><b>서빙 준비</b><span>—</span></div>
                 </div>
-                <div class="scene" data-scene="3">
-                  <div class="track-mini">
-                    <div class="tk-top"><b>#A-104</b><span>3번 테이블 · 2개</span></div>
-                    <div class="tline">
-                      <div class="node done"><i></i>접수 완료 · 12:04</div>
-                      <div class="node done"><i></i>조리 시작 · 12:05</div>
-                      <div class="node now"><i></i>조리중 · 약 6분 남음</div>
-                      <div class="node"><i></i>서빙 준비</div>
-                    </div>
-                    <div class="track-note">화면이 자동으로 바뀝니다 · 결제는 계산대에서</div>
-                  </div>
-                </div>
-                <div class="scene" data-scene="4">
-                  <div class="done-stage">
-                    <div class="done-ring">✓</div>
-                    <b>맛있게 드세요</b>
-                    <span>서빙이 완료되었습니다</span>
-                    <div class="done-receipt"><span>#A-104 · 12:12</span><span>8,000원</span></div>
-                  </div>
-                </div>
+                <div class="rc-rule"></div>
+                <div class="rc-line"><span>남은 시간</span><b class="rc-big">6:00</b></div>
+                <div class="rc-foot">“주문 들어갔어요?”를 묻지 않아도 됩니다</div>
+              </div>
+              <div class="scene" data-scene="4">
+                <div class="rc-stamp">SERVED</div>
+                <div class="rc-rule"></div>
+                <div class="rc-line"><span>주문</span><b>#A-104 · 12:12</b></div>
+                <div class="rc-line"><span>결제</span><b>계산대에서</b></div>
+                <div class="rc-line"><span>적립</span><b>125P 예정</b></div>
+                <div class="rc-rule"></div>
+                <div class="rc-line dim"><span>영수증 요청 · 주문 내역</span><span>화면에 남음</span></div>
+                <div class="rc-foot">결제를 확인하면 매출·재고·포인트가 한 번에 정리됩니다</div>
               </div>
             </div>
           </div>
 
-          <!-- 사장님: KDS -->
+          <!-- 사장님 시선: 데이터 콘솔 -->
           <div class="dev" data-flow="owner">
-            <div class="kds-frame">
-              <div class="k-head">
-                <span class="dot">맛</span>
-                <div><b>운양동 맛집 주방</b><span>실시간 주문</span></div>
-                <span class="live">● LIVE</span>
+            <div class="console">
+              <div class="console-top">
+                <span class="dot"></span><b>운양동 맛집</b><span>KDS</span>
+                <span class="right-tag">LIVE</span>
               </div>
-              <div class="kcounts">
-                <i class="hot">새 주문<b>2</b></i><i>조리중<b>3</b></i><i>서빙 대기<b>1</b></i><i>오늘 완료<b>48</b></i>
-              </div>
-              <div class="k-scene on" data-scene="1">
-                <div class="k-order new">
-                  <div class="t"><b>3<small>번</small></b><span class="el">0분</span></div>
-                  <div class="it"><span class="q">2×</span> 떡볶이 <span style="color:#c9b5a1">매운맛</span></div>
-                  <div class="it"><span class="q">1×</span> 김밥</div>
-                  <div class="alarm">⚠️ 알레르기: 난류 · 확인 후 조리</div>
-                  <div class="go">접수하기</div>
+              <div class="scene on" data-scene="1">
+                <div class="cn-label">새 주문 / 테이블 03</div>
+                <div class="cn-card">
+                  <div class="cn-order">
+                    <div class="no">03<small>번</small></div>
+                    <div class="meta">12:04 접수<br>홀 · 2개</div>
+                    <div class="el">00:00</div>
+                  </div>
+                  <div style="margin-top:8px">
+                    <div class="cn-item"><b>2×</b> 떡볶이 <span style="color:#94a3b8">매운맛</span></div>
+                    <div class="cn-item"><b>1×</b> 김밥 <span style="color:#94a3b8">기본</span></div>
+                  </div>
+                  <div class="cn-alarm">⚠ 알레르기 · 난류 확인 후 조리</div>
+                  <div class="cn-btn">접수하기</div>
                 </div>
               </div>
-              <div class="k-scene" data-scene="2">
-                <div class="k-group">
-                  <div class="tabs"><i class="on">메뉴별 묶음</i><i>테이블별</i></div>
-                  <div class="grow-row"><div><b>떡볶이</b><div class="op">매운맛 2 · 보통 1</div></div><span class="q">3</span></div>
-                  <div class="grow-row"><div><b>김밥</b><div class="op">기본</div></div><span class="q">4</span></div>
-                  <div class="grow-row"><div><b>김치찌개</b><div class="op">순한맛 1</div></div><span class="q">1</span></div>
+              <div class="scene" data-scene="2">
+                <div class="cn-label">메뉴별 묶음 · 3개 테이블</div>
+                <div class="cn-card">
+                  <div class="cn-group">
+                    <div class="cn-grow"><div><b>떡볶이</b><div class="op">매운맛 2 · 보통 1</div></div><span class="q">3<small>그릇</small></span></div>
+                    <div class="cn-grow"><div><b>김밥</b><div class="op">기본</div></div><span class="q">4<small>줄</small></span></div>
+                    <div class="cn-grow"><div><b>김치찌개</b><div class="op">순한맛 1</div></div><span class="q">1<small>개</small></span></div>
+                  </div>
                 </div>
+                <div class="cn-kv"><span>지연 위험</span><b>0건 · 평균 6분</b></div>
               </div>
-              <div class="k-scene" data-scene="3">
-                <div class="k-rev">
-                  <div class="big">오늘 결제 확인 매출<b>￦412,000</b></div>
-                  <div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                  <div class="row-kv"><span>결제 전</span><b>￦38,000</b></div>
-                  <div class="row-kv"><span>재고 경고</span><b>2건</b></div>
-                </div>
+              <div class="scene" data-scene="3">
+                <div class="cn-label">결제 확인 매출 · 다점포 합산</div>
+                <div class="cn-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="cn-sum"><span>오늘 합계</span><b>412,000</b></div>
+                <div class="cn-kv"><span>결제 전</span><b>38,000</b></div>
+                <div class="cn-kv"><span>재고 경고</span><b>2건 · 품절 제안</b></div>
               </div>
-              <div class="k-scene" data-scene="4">
-                <div class="k-coupon">
-                  <div class="tag">단골 쿠폰</div>
-                  <h4>30일 넘게 안 오신 손님 12명</h4>
-                  <p>“이번 주 방문 시 떡볶이 무료” · 대상·예상 금액을 확인하고 보냅니다.</p>
-                  <div class="cta">쿠폰 문자 보내기</div>
-                  <div class="sent">12명에게 발송 예약 완료</div>
+              <div class="scene" data-scene="4">
+                <span class="cn-badge">단골 쿠폰</span>
+                <div class="cn-target">30일 넘게 안 오신 손님 12명
+                  <small>예상 24,000원 · 수신 동의 9명</small>
                 </div>
+                <div class="cn-card" style="margin-top:10px">
+                  <div class="cn-item">“이번 주 방문 시 떡볶이 무료”</div>
+                  <div class="cn-item" style="color:#94a3b8">야간·수신거부 자동 제외</div>
+                </div>
+                <div class="cn-sent">12명 발송 예약 완료</div>
               </div>
             </div>
           </div>
@@ -218,73 +304,83 @@
     </div>
   </section>
 
-  <!-- 기능 -->
-  <section class="lp-sec tight">
+  <!-- ============================================================ 기능 -->
+  <section class="lp-sec">
     <div class="portal-wrap">
-      <div class="sec-head">
-        <div class="eyebrow">기능</div>
-        <h2>한 화면에서 이어지는 매장 운영</h2>
-        <p>주문·주방·매출·재고·예약·웨이팅·직원까지. 필요한 것만 켜서 쓰면 됩니다.</p>
+      <div class="sec-index"><b>02</b>CAPABILITIES<span class="line"></span>SIX CONNECTED PIECES</div>
+      <div class="duo-head">
+        <div class="sec-head">
+          <h2>한 번 연결되면,<br>끝까지 이어집니다</h2>
+          <p>주문·주방·매출·재고·예약·직원까지. 필요한 것만 켜서 쓰고, 데이터는 같은 곳에 쌓입니다.</p>
+        </div>
+        <a class="link-arrow" href="/features">기능 전체 보기 →</a>
       </div>
       <div class="feat-grid">
         <a class="fcard-lp reveal" href="/features">
+          <span class="no">01 / MENU</span>
           <span class="ic">▦</span>
-          <h3>QR·NFC 메뉴판</h3>
-          <p>테이블마다 QR·NFC 주소가 자동 생성. 사진·원산지·알레르기·다국어까지 그대로 보여 줍니다.</p>
+          <h3>QR · NFC 메뉴판</h3>
+          <p>테이블마다 주소와 QR·NFC가 자동 생성. 사진·원산지·알레르기·다국어를 그대로 보여 줍니다.</p>
           <span class="more">자세히 →</span>
         </a>
         <a class="fcard-lp reveal" href="/features">
-          <span class="ic">🍳</span>
+          <span class="no">02 / KITCHEN</span>
+          <span class="ic">▤</span>
           <h3>주방 KDS</h3>
-          <p>접수·조리·서빙 4단계, 지연 경고, 알레르기 강조, 메뉴별 묶음 조리.</p>
+          <p>접수·조리·서빙·결제 4단계, 지연 경고, 알레르기 강조, 메뉴별 묶음 조리.</p>
           <span class="more">자세히 →</span>
         </a>
         <a class="fcard-lp reveal" href="/pricing">
+          <span class="no">03 / REVENUE</span>
           <span class="ic">₩</span>
-          <h3>매출·정산</h3>
+          <h3>매출 · 정산</h3>
           <p>결제 확인 기준 매출, 미수금, 시간대·카테고리 분석과 CSV 내려받기.</p>
           <span class="more">요금 보기 →</span>
         </a>
         <a class="fcard-lp reveal" href="/features">
-          <span class="ic">📦</span>
-          <h3>재고·레시피</h3>
+          <span class="no">04 / STOCK</span>
+          <span class="ic">▥</span>
+          <h3>재고 · 레시피</h3>
           <p>레시피대로 결제 시 자동 차감, 안전재고 경고와 품절 제안.</p>
           <span class="more">자세히 →</span>
         </a>
         <a class="fcard-lp reveal" href="/places">
-          <span class="ic">📍</span>
-          <h3>다점포·매장 찾기</h3>
-          <p>매장별 메뉴·주문·매출을 분리하고, 공개 매장 목록에서 바로 주문 화면으로.</p>
+          <span class="no">05 / STORES</span>
+          <span class="ic">⌗</span>
+          <h3>다점포 · 매장 찾기</h3>
+          <p>매장별 메뉴·주문·매출을 분리하고, 공개 목록에서 바로 주문 화면으로.</p>
           <span class="more">매장 보기 →</span>
         </a>
         <a class="fcard-lp reveal" href="/board">
-          <span class="ic">💬</span>
-          <h3>단골·게시판</h3>
-          <p>등급·포인트·생일 목록과 쿠폰 발송. 공지와 매장 후기는 게시판에 쌓입니다.</p>
+          <span class="no">06 / REGULARS</span>
+          <span class="ic">◈</span>
+          <h3>단골 · 게시판</h3>
+          <p>등급·포인트·생일 목록과 쿠폰 발송. 공지와 후기는 게시판에 쌓입니다.</p>
           <span class="more">게시판 →</span>
         </a>
       </div>
     </div>
   </section>
 
-  <!-- 숫자 -->
+  <!-- ============================================================ 숫자 -->
   <section class="lp-sec tight">
     <div class="portal-wrap">
+      <div class="sec-index"><b>03</b>BY THE NUMBERS<span class="line"></span>NO SETUP FEE</div>
       <div class="stat-band reveal">
-        <div><div class="k">설치비</div><div class="v">0원</div><div class="s">QR·NFC 메뉴판 포함</div></div>
-        <div><div class="k">월 이용료</div><div class="v">0원</div><div class="s">기본 기능 전부</div></div>
-        <div><div class="k">첫 주문까지</div><div class="v">5분</div><div class="s">매장 이름 + 아이디만</div></div>
-        <div><div class="k">쿠폰 문자</div><div class="v">20원~</div><div class="s">보낸 성공 건만</div></div>
+        <div><div class="k">설치비</div><div class="v"><em>0</em>원</div><div class="s">QR·NFC 메뉴판 포함</div></div>
+        <div><div class="k">월 이용료</div><div class="v"><em>0</em>원</div><div class="s">기본 기능 전부</div></div>
+        <div><div class="k">첫 주문까지</div><div class="v">5<em>분</em></div><div class="s">매장 이름 + 아이디만</div></div>
+        <div><div class="k">쿠폰 문자</div><div class="v">20<em>원~</em></div><div class="s">보낸 성공 건만</div></div>
       </div>
     </div>
   </section>
 
-  <!-- 요금 티저 -->
+  <!-- ============================================================ 요금 -->
   <section class="lp-sec tight">
     <div class="portal-wrap">
-      <div class="sec-head center">
-        <div class="eyebrow">요금제</div>
-        <h2>기본은 무료, 문자만 쓴 만큼</h2>
+      <div class="sec-index"><b>04</b>RATE CARD<span class="line"></span>FREE CORE, METERED SMS</div>
+      <div class="sec-head" style="margin-bottom:26px">
+        <h2>기본은 무료,<br>문자만 쓴 만큼</h2>
         <p>설치비·월 이용료 없이 시작하고, 단골 쿠폰 문자를 보낸 성공 건에만 요금이 붙습니다.</p>
       </div>
       <div class="plan-grid">
@@ -317,18 +413,20 @@
     </div>
   </section>
 
-  <!-- CTA -->
-  <section class="lp-sec">
+  <!-- ============================================================ 클로저 -->
+  <section class="lp-sec tight">
     <div class="portal-wrap">
-      <div class="plan featured" style="max-width:820px;margin:0 auto;text-align:center;align-items:center;padding:38px 28px">
-        <span class="tagline">START</span>
-        <h3 style="font-size:clamp(24px,3.4vw,34px);letter-spacing:-.045em">오늘 점심에 바로 써 보세요</h3>
-        <p class="desc" style="min-height:0;max-width:520px">매장 이름과 아이디만 넣으면 QR과 주문 화면이 바로 만들어집니다. 카드 등록도 없습니다.</p>
-        <div class="row" style="gap:8px;flex-wrap:wrap;justify-content:center">
-          <a class="btn primary lp-btn-lg" href="/signup">무료로 매장 시작</a>
-          <a class="btn lp-btn-lg" href="/contact">데모 문의</a>
+      <div class="closer">
+        <div>
+          <div class="eyebrow">START TODAY</div>
+          <h2>오늘 점심에 바로 써 보세요</h2>
+          <p>매장 이름과 아이디만 넣으면 QR과 주문 화면이 바로 만들어집니다. 카드 등록도 없습니다.</p>
+          <p class="note">시제품: 실제 카드 결제(PG)·문자 발송은 아직 연결되지 않았습니다.</p>
         </div>
-        <p class="note">시제품 안내: 실제 카드 결제(PG)·문자 발송은 아직 연결되지 않았습니다.</p>
+        <div class="cta-row">
+          <a class="btn primary lp-btn-lg" href="/signup">무료로 매장 열기</a>
+          <a class="btn ghost lp-btn-lg" href="/contact">데모 문의</a>
+        </div>
       </div>
     </div>
   </section>
@@ -341,15 +439,9 @@
         <div class="brand-line"><span class="nav-logo">w</span><b>w-toto</b></div>
         <p>식당의 QR 메뉴판·주문·주방·매출을 한 곳에서.<br>기본 기능은 무료로 시작합니다.</p>
       </div>
-      <div><h4>서비스</h4>
-        <a href="/features">기능소개</a><a href="/pricing">요금제</a><a href="/order">테이블 주문</a>
-      </div>
-      <div><h4>매장</h4>
-        <a href="/places">매장위치</a><a href="/reserve">예약 신청</a><a href="/wait">웨이팅 접수</a>
-      </div>
-      <div><h4>고객지원</h4>
-        <a href="/contact">문의하기</a><a href="/board">게시판</a><a href="/privacy">개인정보 처리방침</a>
-      </div>
+      <div><h4>서비스</h4><a href="/features">기능소개</a><a href="/pricing">요금제</a><a href="/order">테이블 주문</a></div>
+      <div><h4>매장</h4><a href="/places">매장위치</a><a href="/reserve">예약 신청</a><a href="/wait">웨이팅 접수</a></div>
+      <div><h4>고객지원</h4><a href="/contact">문의하기</a><a href="/board">게시판</a><a href="/privacy">개인정보 처리방침</a></div>
     </div>
     <div class="bottom">
       <span>© <span data-year>2026</span> w-toto · QR 메뉴판</span>

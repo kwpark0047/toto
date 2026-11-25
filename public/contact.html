@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#faf8f5">
+<meta name="theme-color" content="#0f172a">
 <meta name="description" content="w-toto 도입·데모·가맹 문의 — 매장 이름과 연락처를 남기면 접수번호와 함께 1~2일 안에 연락드립니다.">
-<title>문의하기 · w-toto QR 메뉴판</title>
+<title>문의하기 · w-toto</title>
 <link rel="stylesheet" href="/assets/base.css">
 <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body class="portal">
 <header class="site-nav">
   <div class="nav-inner">
-    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>QR 메뉴판 · 맛집</i></span></a>
+    <a class="nav-brand" href="/"><span class="nav-logo">w</span><span class="nav-word"><b>w-toto</b><i>table order os</i></span></a>
     <nav class="nav-links" aria-label="주요 메뉴">
       <a href="/features">기능소개</a>
       <a href="/places">매장위치</a>
@@ -41,9 +41,20 @@
 <main class="portal-main">
   <section class="page-hero">
     <div class="portal-wrap">
-      <div class="eyebrow">문의하기</div>
-      <h1>도입·데모·가맹,<br>편하게 남겨 주세요</h1>
-      <p>매장 상황에 맞춰 안내드립니다. 접수번호를 드리고 영업일 기준 1~2일 안에 연락드립니다.</p>
+      <div class="ph-grid">
+        <div>
+          <div class="kicker">CONTACT / DEMO</div>
+          <h1>도입·데모·가맹,<br><em>접수번호</em>로 남깁니다.</h1>
+        </div>
+        <div class="ph-side">
+          <p>매장 상황에 맞춰 안내드립니다. 접수번호를 드리고 영업일 기준 1~2일 안에 연락드립니다.</p>
+          <div class="ph-facts">
+            <div>응답<b>1~2 영업일</b></div>
+            <div>데모<b>20분</b></div>
+            <div>설치비<b>0원</b></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -52,6 +63,7 @@
       <div class="contact-grid">
         <div class="cform">
           <div id="formPane">
+            <div class="sec-index" style="margin-bottom:18px"><b>01</b>INQUIRY FORM<span class="line"></span>REQUIRED *</div>
             <h2>문의 남기기</h2>
             <p class="small muted" style="margin:6px 0 18px">* 표시는 필수입니다. 전화 또는 이메일 중 하나는 꼭 남겨 주세요.</p>
             <form id="inquiryForm" novalidate>
@@ -88,7 +100,7 @@
                 <textarea class="input" id="qMessage" maxlength="2000" placeholder="예: 매장 2곳에서 쓰고 싶습니다. 태블릿 없이 휴대폰만으로도 되나요?"></textarea>
               </div>
               <label class="consent" style="display:flex;gap:9px;align-items:flex-start">
-                <input type="checkbox" id="qConsent" style="width:21px;height:21px;accent-color:var(--brand);margin-top:2px">
+                <input type="checkbox" id="qConsent" style="width:20px;height:20px;accent-color:var(--brand);margin-top:2px">
                 <span class="small">문의 답변을 위해 이름·연락처를 수집·이용하는 데 동의합니다(필수). 답변 목적으로만 쓰고 다른 곳에 보내지 않습니다. <a href="/privacy" target="_blank">처리방침</a></span>
               </label>
               <div class="msg" id="qMsg" role="alert" aria-live="polite"></div>
@@ -113,6 +125,7 @@
 
         <aside class="contact-side">
           <div class="side-card dark">
+            <div class="sec-index" style="border-color:rgba(148,163,184,.25);margin-bottom:12px;color:#7c8da6"><b>02</b>PROCESS<span class="line" style="background:rgba(148,163,184,.25)"></span></div>
             <h3>이렇게 진행됩니다</h3>
             <ol>
               <li>문의 접수 → 접수번호 안내</li>
