@@ -360,6 +360,18 @@ def main():
                                       ("simRate", ["20원"], []),
                                       ("simVat", ["22,000원"], [])], path="/pricing")))
 
+    results.append(("로컬 커뮤니티", run("community.js",
+                                     {"/api/auth/me": me, "/api/community": client.get("/api/community")},
+                                     [("postList", [], ["undefined"]),
+                                      ("comState", ["커뮤니티"], []),
+                                      ("comCount", ["글"], [])], path="/community")))
+
+    results.append(("포장 주문(/online)", run("online.js",
+                                           {"/api/menu": menu,
+                                            "/api/payments/methods": client.get("/api/payments/methods")},
+                                           [("onMenu", ["김밥"], ["undefined"]),
+                                            ("onName", ["맛집"], [])], path="/online")))
+
     print()
     for name, ok in results:
         print(f"  {'✅' if ok else '❌'} {name}")

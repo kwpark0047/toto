@@ -114,7 +114,22 @@ def main():
     except sqlite3.IntegrityError:
         dup = 1
     check("같은 매장 같은 번호는 중복 저장 차단", dup == 1)
+    owner_id = conn.execute("SELECT owner_id FROM stores WHERE id=1").fetchone()[0]
+    account_id = conn.execute(
+        "SELECT account_id FROM staff WHERE role='admin' ORDER BY id LIMIT 1").fetchone()[0]
+    listed = conn.execute("SELECT listed FROM stores WHERE id=1").fetchone()[0]
+    mixed = conn.execute("SELECT COUNT(*) FROM staff WHERE account_id<>?", (account_id,)).fetchone()[0]
     conn.close()
+    check("기존 매장이 첫 사장님 계정 소유로 이관", owner_id == account_id and owner_id > 0,
+          (owner_id, account_id))
+    check("기존 직원이 같은 사업자 계정으로 묶임", mixed == 0, mixed)
+    check("기존 매장은 공개 목록 유지(호환)", listed == 1, listed)
+    # 새 계정은 옛 매장을 보지 못해야 한다
+    from app import stores as stores_mod
+    u2, _t2, _e2, _s2 = staff.signup("새 가게", "newbie29", "newpass1234", 2)
+    with stores_mod.account_scope(u2["accountId"]):
+        seen = [s["id"] for s in stores_mod.list_stores()]
+    check("새 계정은 기존 매장을 보지 못함(계정 격리)", seen == [u2["storeId"]], seen)
     print()
     if failures:
         print("문제:", *failures, sep="\n - ")

@@ -271,12 +271,15 @@ try:
     _linked = _oauth.linked_staff_id("google", "unit-123")
     check("단위: oauth_accounts 에 계정 연결 저장", _linked == _u1["id"], _linked)
     try:
-        _oauth.login_with_profile({"provider": "kakao", "subject": "other-9",
-                                   "email": "", "name": "다른 사람"}, "kakao")
-        _blocked = False
+        _u3, _t3, _e3, _created3 = _oauth.login_with_profile(
+            {"provider": "kakao", "subject": "other-9", "email": "", "name": "다른 사람"}, "kakao")
+        _blocked = None
     except _oauth.OAuthError as _err:
-        _blocked = _err.code == "unlinked"
-    check("단위: 연결 없는 소셜 계정은 관리자 계정을 새로 만들지 않음(unlinked)", _blocked)
+        _blocked = _err.code
+    check("단위: 연결 없는 소셜 계정은 자기 매장으로 새 계정 생성(다른 사장님과 분리)",
+          _created3 is True and _u3["id"] != _u1["id"]
+          and _u3["accountId"] != _u1["accountId"] and _u3["storeId"] != _u1["storeId"],
+          (_created3, _u3.get("accountId"), _u3.get("storeId"), _blocked))
 finally:
     for _k, _v in _saved_env.items():
         if _v is None:
@@ -389,15 +392,20 @@ print("\n[5] 회원·포인트·등급")
 st, members = owner.get("/api/customers")
 m = next((c for c in members["customers"] if c["phone"] == "010-1234-5678"), None)
 check("주문 고객이 회원으로 등록", m is not None)
-check("포인트 잔액 반영", m and m["points"] == paid["pointsEarned"], m and m["points"])
+st, ev_public = owner.get("/api/events")
+event_points = 0
+if ev_public.get("config", {}).get("firstVisit", {}).get("enabled"):
+    event_points += int(ev_public["config"]["firstVisit"].get("points") or 0)
+check("포인트 잔액 반영(결제 적립+첫 방문 이벤트)",
+      m and m["points"] == paid["pointsEarned"] + event_points, m and m["points"])
 check("신규 등급", m and m["grade"] == "NEW", m and m["grade"])
 mid = m["id"]
 st, order2 = anon.post("/api/orders", {"table": 3,
     "items": [{"itemId": kimbap["id"], "qty": 2}],
     "customer": {"name": "김테스트", "phone": "010-1234-5678", "consent": True},
-    "pointsUsed": paid["pointsEarned"]})
-check("주문서 포인트 사용", order2["pointsUsed"] == paid["pointsEarned"]
-      and order2["total"] == kimbap["price"] * 2 - paid["pointsEarned"],
+    "pointsUsed": m["points"]})
+check("주문서 포인트 사용", order2["pointsUsed"] == m["points"]
+      and order2["total"] == kimbap["price"] * 2 - m["points"],
       (order2.get("pointsUsed"), order2.get("total")))
 st, err = anon.post("/api/orders", {"table": 3, "items": [{"itemId": kimbap["id"], "qty": 1}],
     "customer": {"name": "김테스트", "phone": "010-1234-5678"}, "pointsUsed": 999999})
@@ -692,7 +700,7 @@ check("대비 낮은 색 조합 거부", st == 400, st)
 owner.patch("/api/qr/config", {"options": {"dot": "rounded", "eye": "rounded", "fg": "#1f2a44", "bg": "#fdf3e3"}})
 st, nfc = owner.get("/api/qr/config")
 n3 = next((x for x in nfc["nfc"] if x["code"] == "3"), None)
-check("NFC URL이 테이블 주소와 일치", n3 and n3["url"] == BASE + "/t/3",
+check("NFC URL이 테이블 주소와 일치", n3 and n3["url"] == BASE + "/t/3?via=nfc",
       n3["url"] if n3 else None)
 st, store_qr = owner.get("/api/qr/store.png?base=http://192.168.1.50:8000", raw=True)
 check("매장 공통 QR 생성·스캔",
@@ -1206,8 +1214,12 @@ if st == 200 and ps.get("stores"):
           isinstance(ps.get("regions"), list) and s0.get("tableCount", 0) >= 1, s0.get("tableCount"))
 st, new_store = owner.post("/api/stores", {"name": "공개 테스트 매장", "tables": 3})
 check("매장 추가", st == 201, st)
+st, ps_hidden = anon.get("/api/public/stores")
+check("새 매장은 기본적으로 공개 목록에 나오지 않음(사장님이 공개를 켜야 함)",
+      not any(s["name"] == "공개 테스트 매장" for s in ps_hidden.get("stores", [])), st)
+st, _ = owner.patch(f"/api/stores/{new_store['id']}", {"listed": True})
 st, ps = anon.get("/api/public/stores")
-check("추가한 매장이 공개 목록에 반영",
+check("공개를 켠 매장이 공개 목록에 반영",
       any(s["name"] == "공개 테스트 매장" for s in ps.get("stores", [])), st)
 
 st, err = anon.post("/api/public/inquiries", {"name": "", "message": "문의", "consent": True})
@@ -1362,6 +1374,314 @@ check("매니저는 통합 매출 조회 가능", st == 200, st)
 st, _ = manager_c.post("/api/stores/transfer-staff", {"staffId": p_src["id"], "toStore": 1})
 check("매니저는 직원 이동 불가(403)", st == 403, st)
 owner.post("/api/stores/switch", {"storeId": 1})
+
+# ---------------------------------------------------------------- 29. 사업자 계정 멀티테넌트
+print("\n[29] 사업자 계정 여러 개(멀티테넌트·데이터 격리)")
+other = Client()
+st, signup_b = other.post("/api/auth/signup", {"storeName": "B가게", "username": "bosssb29",
+                                                "password": "sbpass1234", "tables": 3})
+check("배포 하나에 두 번째 사업자 계정 가입", st == 201 and signup_b["user"]["role"] == "admin", st)
+store_b = signup_b["storeId"]
+check("두 번째 계정은 자기 매장으로 시작",
+      store_b != 1 and [x["name"] for x in signup_b["stores"]] == ["B가게"], signup_b.get("stores"))
+st, stores_b = other.get("/api/stores")
+check("B 계정 매장 목록에는 A 매장이 없음",
+      st == 200 and all(x["id"] != 1 for x in stores_b["stores"]), stores_b)
+st, _ = other.post("/api/stores/switch", {"storeId": 1})
+check("B 계정은 A 매장으로 전환 불가(404)", st in (403, 404), st)
+st, cust_b = other.get("/api/customers")
+check("B 계정 회원 목록은 비어 있음(데이터 격리)",
+      st == 200 and cust_b.get("customers") == [], st)
+st, menu_b = other.get("/api/menu")
+check("B 매장은 자기 메뉴를 따로 가짐", st == 200 and len(menu_b["items"]) >= 1, st)
+st, groups_b = other.get("/api/groups")
+check("B 계정 그룹 목록 비어 있음", st == 200 and groups_b.get("groups") == [], st)
+st, stores_a = owner.get("/api/stores")
+check("A 계정 매장 목록에 B 매장이 없음",
+      all(x["id"] != store_b for x in stores_a["stores"]), stores_a)
+st, _ = owner.patch(f"/api/stores/{store_b}", {"name": "가로채기"})
+check("A 계정이 B 매장을 수정할 수 없음(404)", st == 404, st)
+st, _ = owner.get(f"/api/orders?store={store_b}")
+check("A 계정이 B 매장 주문을 조회할 수 없음(빈 목록)",
+      st == 200 and not [o for o in _["orders"] if o["storeId"] == store_b], st)
+
+# ---------------------------------------------------------------- 30. 매장 그룹
+print("\n[30] 매장 그룹(브랜드·지역·직영/가맹)")
+owner.post("/api/stores/switch", {"storeId": 1})
+st, group = owner.post("/api/groups", {"name": "운양 직영", "kind": "direct",
+                                       "storeIds": [1, src["id"]]})
+check("매장 2곳을 그룹으로 묶기", st == 201 and len(group["stores"]) == 2, st)
+gid = group["id"]
+st, gl = owner.get("/api/groups")
+check("그룹 목록에 매장 구성원 표시",
+      any(g["id"] == gid and len(g["stores"]) == 2 for g in gl["groups"]), gl)
+st, gsum = owner.get(f"/api/groups/{gid}/summary")
+check("그룹 통합 매출 요약",
+      st == 200 and gsum["totals"]["storeCount"] == 2 and "monthPaid" in gsum["totals"], st)
+st, gout = owner.post(f"/api/groups/{gid}/copy-menu", {"fromStore": 1, "toStores": [src["id"]],
+                                                       "onDuplicate": "overwrite"})
+check("그룹 메뉴 일괄 복사", st == 201 and (gout["created"] + gout["updated"]) >= 1, gout)
+st, gstaff = owner.post("/api/groups", {"name": "지역 그룹", "kind": "region",
+                                        "storeIds": [dst["id"], new_store["id"]]})
+gid2 = gstaff["id"]
+st, gt = owner.post(f"/api/groups/{gid2}/transfer-staff", {"staffId": p_src["id"],
+                                                         "toStore": new_store["id"]})
+check("그룹 안 직원 이동", st == 201 and gt["toStore"]["id"] == new_store["id"], st)
+st, _ = owner.post(f"/api/groups/{gid}/transfer-staff", {"staffId": p_src["id"], "toStore": new_store["id"]})
+check("그룹 밖 매장으로는 이동 거부", st in (400, 404), st)
+st, gs = owner.patch(f"/api/groups/{gid}", {"settings": {"channelMode": "both", "waiting": True}})
+check("그룹 기본 설정 저장", st == 200 and gs["settings"]["channelMode"] == "both", st)
+st, applied = owner.post(f"/api/groups/{gid}/apply-settings")
+check("그룹 기본 설정 적용(운영 모드·웨이팅)",
+      st == 200 and sorted(applied["applied"]) == sorted([m["id"] for m in group["stores"]]), st)
+st, _ = other.get(f"/api/groups/{gid}/summary")
+check("다른 계정은 그룹을 볼 수 없음", st == 404, st)
+
+# ---------------------------------------------------------------- 31. 운영 모드·구역·테이블
+print("\n[31] 온·오프라인 운영 모드·구역·테이블")
+owner.post("/api/stores/switch", {"storeId": 1})
+st, saved = owner.patch("/api/settings", {"channel": {"mode": "both", "pickup": True,
+                                                    "delivery": False, "pickupMin": 15}})
+check("온·오프라인 통합 모드 설정",
+      st == 200 and saved["saved"]["channel"]["mode"] == "both", saved.get("saved", {}).get("channel"))
+st, menu_now = owner.get("/api/menu")
+first_item_b = menu_now["items"][0]
+st, pickup = anon.post("/api/orders", {"channel": "pickup", "items": [{"itemId": first_item_b["id"], "qty": 1}],
+    "customer": {"name": "포장손님", "phone": "010-5555-6666"}})
+check("포장 주문 생성(테이블 없이)", st == 201 and pickup["channel"] == "pickup"
+      and pickup["table"] == 0, (st, pickup.get("channel") if isinstance(pickup, dict) else pickup))
+st, _ = anon.post("/api/orders", {"channel": "delivery", "items": [{"itemId": first_item_b["id"], "qty": 1}],
+    "customer": {"name": "배달손님", "phone": "010-5555-6667"}})
+check("꺼 둔 배달 주문은 거부", st == 400, st)
+st, _ = anon.post("/api/orders", {"channel": "pickup", "items": [{"itemId": first_item_b["id"], "qty": 1}],
+    "customer": {"name": "연락없음", "phone": ""}})
+check("포장 주문은 연락처 필수", st == 400, st)
+st, _ = owner.patch("/api/settings", {"channel": {"mode": "online"}})
+st, _ = anon.post("/api/orders", {"table": 3, "items": [{"itemId": first_item_b["id"], "qty": 1}]})
+check("온라인 전용 매장은 테이블 주문 거부", st == 400, st)
+owner.patch("/api/settings", {"channel": {"mode": "both", "pickup": True}})
+st, zones = owner.get("/api/zones")
+check("기본 구역(홀)이 있음", st == 200 and any(z["name"] == "홀" for z in zones["zones"]), zones)
+st, zone = owner.post("/api/zones", {"name": "창가"})
+check("구역 추가(창가)", st == 201 and zone["name"] == "창가", st)
+st, bulk = owner.post("/api/tables/bulk", {"zoneId": zone["id"], "prefix": "창가",
+                                            "count": 3, "seats": 2})
+check("구역에 테이블 3개 일괄 생성", st == 201 and bulk["created"] == 3, st)
+bulk_ids = [t["id"] for t in bulk["tables"]]
+st, tm = owner.patch(f"/api/tables/{t1['tables'][0]['id']}", {"zoneId": zone["id"]})
+check("테이블을 다른 구역으로 이동", st == 200 and tm["zoneId"] == zone["id"], st)
+st, ta = owner.get("/api/tables/admin")
+check("구역별 테이블 수 집계",
+      any(z["id"] == zone["id"] and z["tableCount"] >= 4 for z in ta["zones"]), ta.get("zones"))
+st, zd = owner.delete(f"/api/zones/{zone['id']}")
+check("구역 삭제 시 테이블은 다른 구역으로 이동", st == 200 and zd["movedTables"] >= 4, zd)
+st, _ = owner.delete("/api/zones/999999")
+check("없는 구역 삭제는 404", st == 404, st)
+st, ng = owner.get("/api/nfc/guide")
+check("NFC NDEF 쓰기 안내·주소",
+      st == 200 and ng["items"] and "via=nfc" in ng["items"][0]["url"] and len(ng["guide"]) >= 3, st)
+
+# ---------------------------------------------------------------- 32. 결제 수단
+print("\n[32] 결제(현금·계좌이체·카드·간편결제)")
+st, pay_cfg = owner.patch("/api/settings", {"payments": {
+    "transfer": {"enabled": True, "bank": "김포농협", "accountNo": "123-456-789", "holder": "가게A"},
+    "card": {"enabled": False}}})
+check("계좌이체 계좌 설정",
+      st == 200 and pay_cfg["saved"]["payments"]["transfer"]["accountNo"] == "123-456-789", st)
+st, methods = anon.get("/api/payments/methods")
+check("손님 화면 결제수단 목록(현금·계좌이체)",
+      any(m["code"] == "TRANSFER" for m in methods["methods"])
+      and any(m["code"] == "CASH" for m in methods["methods"]), methods)
+st, _ = anon.post("/api/orders", {"table": 3, "items": [{"itemId": first_item_b["id"], "qty": 1}],
+    "customer": {"name": "카드손님", "phone": "010-7777-8888"}, "payMethod": "CARD"})
+check("꺼 둔 카드 결제는 주문 단계에서 거부", st == 400, st)
+st, to = anon.post("/api/orders", {"table": 3, "items": [{"itemId": first_item_b["id"], "qty": 2}],
+    "customer": {"name": "이체손님", "phone": "010-9999-0000"}, "payMethod": "TRANSFER"})
+check("계좌이체 주문 생성", st == 201 and to["paymentMethod"] == "TRANSFER", st)
+st, started = anon.post(f"/api/orders/{to['id']}/transfer", {"table": 3, "depositor": "이체손"})
+check("입금자명 남기기(결제 전)",
+      st == 200 and started["order"]["paymentStatus"] == "UNPAID", st)
+st, pend = owner.get("/api/payments")
+check("사장님 화면 입금 확인 대기 목록",
+      st == 200 and any(x["orderId"] == to["id"] and x["depositor"] == "이체손"
+                        for x in pend["pendingTransfers"]["pending"]), pend.get("pendingTransfers"))
+st, conf = owner.post(f"/api/orders/{to['id']}/payment-confirm", {"method": "TRANSFER"})
+check("입금 확인 → 결제 완료", st == 200 and conf["order"]["paymentStatus"] == "PAID", st)
+check("결제 기록에 계좌이체 남음",
+      any(p["method"] == "TRANSFER" and p["status"] == "PAID" for p in conf["payments"]), conf.get("payments"))
+st, _ = owner.patch("/api/settings", {"payments": {"card": {"enabled": True, "feeRate": 1.5}}})
+st, co = anon.post("/api/orders", {"table": 3, "items": [{"itemId": first_item_b["id"], "qty": 1}],
+    "customer": {"name": "카드손님2", "phone": "010-7777-8889"}, "payMethod": "CARD"})
+check("카드를 켜면 카드 주문 가능", st == 201, st)
+st, paidc = owner.post(f"/api/orders/{co['id']}/pay", {"method": "CARD"})
+check("카드 결제(모의 승인, 실제 결제 아님)",
+      st == 200 and paidc["order"]["paymentStatus"] == "PAID" and paidc["simulated"] is True, st)
+st, refund = owner.post(f"/api/orders/{co['id']}/refund", {})
+check("결제 취소·환불", st == 200 and refund["order"]["paymentStatus"] == "UNPAID", st)
+st, psum = owner.get("/api/payments/summary")
+check("결제수단별 합계·수수료",
+      st == 200 and psum["total"] > 0 and any(m["method"] == "TRANSFER" and m["amount"] > 0
+                                              for m in psum["methods"]), psum)
+check("PG는 모의(simulation) 상태로 정직하게 표시", psum.get("adapter", {}).get("mode") == "simulation",
+      psum.get("adapter"))
+st, _ = manager_c.post(f"/api/orders/{co['id']}/refund", {})
+check("환불 권한은 매니저에게 있음(이미 환불된 건은 400)", st in (400, 404), st)
+st, _ = part_c.get("/api/payments")
+check("알바는 결제 확인 목록 조회 가능(주문·결제 권한)", st == 200, st)
+st, _ = part_c.patch("/api/settings", {"payments": {"card": {"enabled": True}}})
+check("알바는 결제 설정 변경 불가(403)", st == 403, st)
+
+# ---------------------------------------------------------------- 33. QR·NFC 유입 통계
+print("\n[33] QR·NFC 유입 통계")
+st, v1 = anon.post("/api/public/visit", {"code": "3", "via": "qr", "path": "/t/3"})
+st2, v2 = anon.post("/api/public/visit", {"code": "3", "via": "nfc", "path": "/t/3?via=nfc"})
+check("QR·NFC 유입 기록", st == 201 and st2 == 201 and v2["via"] == "nfc", (st, st2))
+st, scans = owner.get("/api/stats/scans")
+check("QR 대비 NFC 유입 통계",
+      st == 200 and scans["today"]["byVia"]["nfc"] >= 1 and scans["today"]["total"] >= 2, scans.get("today"))
+check("테이블별 유입 표", isinstance(scans.get("byTable"), list) and len(scans["byTable"]) >= 1, scans.get("byTable"))
+st, _ = other.get("/api/stats/scans")
+check("다른 계정은 이 매장 유입 통계를 볼 수 없음(자기 매장 0건)",
+      st == 200 and _.get("storeId") == store_b, st)
+
+# ---------------------------------------------------------------- 34. 웨이팅 ON/OFF
+print("\n[34] 웨이팅 설정")
+st, woff = owner.patch("/api/settings", {"waiting": {"enabled": False, "notice": "오늘은 대기 없이 입장합니다"}})
+check("웨이팅 OFF 저장", st == 200 and woff["saved"]["waiting"]["enabled"] is False, st)
+st, _ = anon.post("/api/wait", {"name": "대기손", "phone": "010-2222-3333", "party": 2,
+                                 "consent": True})
+check("웨이팅 OFF면 접수 거부", st == 400, st)
+owner.patch("/api/settings", {"waiting": {"enabled": True, "maxParty": 4}})
+st, _ = anon.post("/api/wait", {"name": "대기손", "phone": "010-2222-3333", "party": 9,
+                                 "consent": True})
+check("한 팀 최대 인원 초과 거부", st == 400, st)
+st, w = anon.post("/api/wait", {"name": "대기손", "phone": "010-2222-3333", "party": 2,
+                                 "consent": True})
+check("웨이팅 ON이면 정상 접수", st == 201 and w["ticket"]["ticketNo"], st)
+
+# ---------------------------------------------------------------- 35. 주방 KDS
+print("\n[35] 주방 KDS(경로 표시·품절 알림)")
+st, ks = owner.get("/api/kitchen")
+check("주방 요약에 경로별 건수", st == 200 and isinstance(ks["summary"]["channels"], dict), st)
+check("주문 카드에 매장/포장 구분 라벨",
+      all(o.get("channelLabel") for o in ks["queue"]), [o.get("channel") for o in ks["queue"][:3]])
+check("KDS에 포장 주문 표시", any(o.get("channel") == "pickup" for o in ks["queue"] + ks["serving"]), None)
+check("품절 연동 알림 필드", "soldout" in ks["summary"]["alerts"]
+      and "affectedOrders" in ks["summary"]["alerts"], ks["summary"].get("alerts"))
+st, menu_all36 = owner.get("/api/menu/all")
+sold_item = menu_all36["items"][0]
+owner.post(f"/api/items/{sold_item['id']}/soldout", {"soldout": True})
+st, ks2 = owner.get("/api/kitchen")
+check("품절 메뉴가 KDS 알림에 올라감",
+      any(x["itemId"] == sold_item["id"] for x in ks2["summary"]["alerts"]["soldout"]), None)
+owner.post(f"/api/items/{sold_item['id']}/soldout", {"soldout": False})
+
+# ---------------------------------------------------------------- 36. 직원 역할 확장
+print("\n[36] 직원 역할(점장·홀)·권한")
+st, head = owner.post("/api/staff", {"name": "점장님", "username": "head36",
+                                     "password": "headpass1", "role": "head"})
+check("점장 역할 생성", st == 201 and head["roleLabel"] == "점장", st)
+st, hall = owner.post("/api/staff", {"name": "홀직원", "username": "hall36",
+                                     "password": "hallpass1", "role": "hall"})
+check("홀 역할 생성", st == 201 and hall["roleLabel"] == "홀", st)
+head_c = Client()
+head_c.login("head36", "headpass1")
+st, _ = head_c.patch("/api/settings", {"storeName": "점장이 바꿈"})
+check("점장은 매장 설정 변경 불가(403)", st == 403, st)
+st, _ = head_c.get("/api/staff")
+check("점장은 직원 관리 가능", st == 200, st)
+hall_c = Client()
+hall_c.login("hall36", "hallpass1")
+st, _ = hall_c.get("/api/orders")
+check("홀 직원은 주문 확인 가능", st == 200, st)
+st, _ = hall_c.get("/api/staff")
+check("홀 직원은 직원 관리 불가(403)", st == 403, st)
+
+# ---------------------------------------------------------------- 37. 고객 이벤트·쿠폰
+print("\n[37] 고객 이벤트·쿠폰")
+month = today[5:7]
+st, ev = owner.patch("/api/settings", {"events": {
+    "firstVisit": {"enabled": True, "points": 500, "coupon": True},
+    "birthday": {"enabled": True, "points": 1000, "coupon": False},
+    "coupon": {"title": "첫 방문 쿠폰", "amount": 2000, "minSpend": 10000, "validDays": 30},
+    "timeDiscount": {"enabled": False}}})
+check("이벤트 설정 저장", st == 200 and ev["saved"]["events"]["firstVisit"]["coupon"] is True, st)
+st, c_new = owner.post("/api/customers", {"name": "생일손님", "phone": "010-3333-4444",
+                                          "birthday": f"1990-{month}-15", "consent": True})
+check("생일 회원 등록", st == 201 and c_new["id"], st)
+st, menu_all37 = owner.get("/api/menu/all")
+bulgogi2 = next(i for i in menu_all37["items"] if i["name"] == "불고기")
+st, eo = anon.post("/api/orders", {"table": 3, "items": [{"itemId": bulgogi2["id"], "qty": 1}],
+    "customer": {"name": "생일손님", "phone": "010-3333-4444", "consent": True}})
+st, ep = owner.post(f"/api/orders/{eo['id']}/payment", {"paid": True})
+check("첫 방문 이벤트: 결제 확인", st == 200 and ep["paymentStatus"] == "PAID", st)
+st, cc = owner.get(f"/api/customers/{c_new['id']}/coupons")
+check("첫 방문 쿠폰 발급", st == 200 and any(x["status"] == "ISSUED" for x in cc["coupons"]), cc.get("coupons"))
+st, ev2 = owner.get("/api/events")
+check("이벤트 적용 내역에 첫 방문·생일 기록",
+      st == 200 and any(x["event"] in ("firstVisit", "birthday") for x in ev2["recent"]), ev2.get("recent"))
+usable = next((x for x in cc["coupons"] if x["status"] == "ISSUED"), None)
+if usable:
+    st, co2 = anon.post("/api/orders", {"table": 3,
+        "items": [{"itemId": bulgogi2["id"], "qty": 1}],
+        "customer": {"name": "생일손님", "phone": "010-3333-4444", "consent": True},
+        "couponId": usable["id"]})
+    check("쿠폰 적용 주문(2,000원 할인)",
+          st == 201 and co2["discount"] == 2000 and co2["total"] == bulgogi2["price"] - 2000, co2)
+    st, mc = anon.get("/api/member/coupons?phone=01033334444")
+    check("사용한 쿠폰은 다시 안 나옴", st == 200 and not any(x["id"] == usable["id"] for x in mc["coupons"]), mc)
+    owner.post(f"/api/orders/{co2['id']}/status", {"status": "CANCELED"})
+    st, cc2 = owner.get(f"/api/customers/{c_new['id']}/coupons")
+    check("주문 취소 시 쿠폰 복원",
+          any(x["id"] == usable["id"] and x["status"] == "ISSUED" for x in cc2["coupons"]), cc2.get("coupons"))
+st, _ = owner.patch("/api/settings", {"events": {"timeDiscount": {"enabled": True, "start": "00:00",
+                                                                     "end": "23:59", "percent": 10}}})
+st, tdo = anon.post("/api/orders", {"table": 3, "items": [{"itemId": bulgogi2["id"], "qty": 1}],
+    "customer": {"name": "시간할인손", "phone": "010-4444-5555"}})
+check("시간 할인 자동 적용(10%)",
+      st == 201 and tdo["discount"] == int(bulgogi2["price"] * 0.1), tdo)
+owner.patch("/api/settings", {"events": {"timeDiscount": {"enabled": False}}})
+st, cp = owner.post("/api/coupons", {"title": "주말 쿠폰", "amount": 3000, "minSpend": 0,
+                                     "validDays": 7})
+check("쿠폰 만들기", st == 201 and cp["id"], st)
+st, issued = owner.post(f"/api/customers/{c_new['id']}/coupons", {"couponId": cp["id"]})
+check("회원에게 수동 쿠폰 발급", st == 201 and issued["issued"] is True, issued)
+
+# ---------------------------------------------------------------- 38. 로컬 커뮤니티
+print("\n[38] 로컬 커뮤니티")
+st, com_off = anon.get("/api/public/community")
+check("커뮤니티 OFF면 손님에게 글 없음", st == 200 and com_off["enabled"] is False, com_off)
+st, _ = owner.post("/api/community", {"title": "동네 소식", "body": "오늘 시장 세일"})
+check("커뮤니티 OFF면 글쓰기 거부", st == 400, st)
+st, com_set = owner.patch("/api/settings", {"community": {"enabled": True, "intro": "운양동 이웃 소식",
+                                                        "neighborhood": "운양동", "showToCustomers": True}})
+check("로컬 커뮤니티 켜기", st == 200 and com_set["saved"]["community"]["enabled"] is True, st)
+st, post1 = owner.post("/api/community", {"kind": "neighbor", "title": "새로 문 연 빵집",
+                                          "body": "옆 골목 빵집이 문을 열었어요"})
+check("동네 소식 글쓰기", st == 201 and post1["id"], st)
+st, gp = owner.post("/api/community", {"kind": "promo", "title": "그룹 공동 프로모션",
+                                        "body": "그룹 매장 모두 같은 이벤트", "scope": "group"})
+check("그룹 공동 프로모션 글쓰기", st == 201 and gp["groupId"] == gid, (st, gp))
+st, pub_com = anon.get("/api/public/community")
+check("손님 화면에 동네 소식 노출",
+      st == 200 and pub_com["enabled"] is True
+      and any(p["id"] == post1["id"] for p in pub_com["posts"]), pub_com)
+st, pub_group = anon.get(f"/api/public/community?store={src['id']}")
+check("커뮤니티를 안 켠 그룹 매장에는 그룹 글이 안 보임",
+      st == 200 and pub_group["enabled"] is False, pub_group)
+owner.post("/api/stores/switch", {"storeId": src["id"]})
+owner.patch("/api/settings", {"community": {"enabled": True, "showToCustomers": True}})
+st, pub_group2 = anon.get(f"/api/public/community?store={src['id']}")
+check("커뮤니티를 켠 그룹 매장 손님에게 그룹 글 노출",
+      st == 200 and any(p["id"] == gp["id"] for p in pub_group2["posts"]), pub_group2)
+owner.post("/api/stores/switch", {"storeId": 1})
+st, pub_b = anon.get(f"/api/public/community?store={store_b}")
+check("다른 사업자 매장에는 이 글이 안 보임",
+      st == 200 and not any(p["id"] in (post1["id"], gp["id"]) for p in pub_b["posts"]), pub_b)
+st, hidden = owner.patch(f"/api/community/{post1['id']}", {"visible": False})
+st, pub_com2 = anon.get("/api/public/community")
+check("숨긴 글은 손님 화면에서 빠짐",
+      not any(p["id"] == post1["id"] for p in pub_com2["posts"]), pub_com2)
 
 # ---------------------------------------------------------------- 요약
 print(f"\n{'='*54}\n  통과 {len(PASS)}건 / 실패 {len(FAIL)}건")

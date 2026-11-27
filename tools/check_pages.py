@@ -17,6 +17,7 @@ PUB = os.path.join(ROOT, "public")
 PAIRS = {
     "index.html": ["util.js", "portal.js", "landing.js"],
     "order.html": ["util.js", "order.js"],
+    "online.html": ["util.js", "online.js"],
     "features.html": ["util.js", "portal.js"],
     "places.html": ["util.js", "portal.js", "places.js"],
     "pricing.html": ["util.js", "portal.js", "pricing.js"],
@@ -38,6 +39,7 @@ PAIRS = {
     "reservations.html": ["util.js", "nav.js", "reservations.js"],
     "reviews.html": ["util.js", "nav.js", "reviews.js"],
     "stores.html": ["util.js", "nav.js", "stores.js"],
+    "community.html": ["util.js", "nav.js", "community.js"],
     "account.html": ["util.js", "nav.js", "account.js"],
     "reserve.html": ["util.js", "reserve.js"],
     "print.html": ["util.js", "print.js"],
