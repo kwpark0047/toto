@@ -1205,17 +1205,16 @@
     };
     if (!SR) { /* 음성 미지원 브라우저 */ }
     initVoice();
+    // 메뉴를 먼저 요청해 두고 테이블 확인과 동시에 진행한다(첫 화면이 더 빨리 짜진다).
+    const menuReady = loadMenu(true).catch((e) => {
+      if (document.getElementById("menuList")) showMenuError(e);
+    });
     try {
       await loadTable();
     } catch (e) {
       return;   // 비활성·없는 테이블은 안내 화면만 보여 준다
     }
-    try {
-      await loadMenu(true);
-    } catch (e) {
-      showMenuError(e);
-    }
-    renderCartBar();
+    await menuReady;    renderCartBar();
     await loadOrders();
     loadCall();
     loadCommunity();

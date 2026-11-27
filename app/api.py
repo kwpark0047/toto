@@ -662,10 +662,12 @@ def api_table_by_code(ctx):
     if not t:
         raise LookupError("없는 테이블 주소입니다")
     with stores.use(t["storeId"]):
+        # 설정을 한 번만 읽어 store·포인트·결제 안내에 함께 쓴다(왕복 4회 → 2회).
+        conf = settings.get()
         return json_response({
-            "table": t, "store": settings.public(),
-            "pointsRate": settings.points_rate(),
-            "paymentNote": settings.get()["paymentNote"],
+            "table": t, "store": settings.public(merged=conf),
+            "pointsRate": settings.points_rate(merged=conf),
+            "paymentNote": conf["paymentNote"],
         })
 
 
