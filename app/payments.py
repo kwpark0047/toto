@@ -160,6 +160,9 @@ def charge(order_id, method, memo="", depositor=""):
     code = _norm(method)
     if code == "TRANSFER":
         raise ValueError("계좌이체는 입금자명을 남기고 사장님이 입금을 확인합니다")
+    if code == "CASH":
+        # 현금은 결제 기록만 남기고 바로 확인 처리한다(모의 승인 아님)
+        return confirm(order_id, "CASH", actor=None)
     item = method_conf(code)
     if not item.get("enabled"):
         raise ValueError(f"{config.PAYMENT_METHOD_LABELS[code]} 결제는 이 매장에서 쓰지 않습니다")

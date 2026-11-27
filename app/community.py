@@ -143,6 +143,9 @@ def update(post_id, data):
 
 def delete(post_id):
     post = get(post_id)
+    if post["storeId"] != stores.current():
+        # 그룹 글로 보이더라도 다른 매장이 쓴 글은 지울 수 없다
+        raise ValueError("우리 매장이 쓴 글만 삭제할 수 있습니다")
     with store.tx() as conn:
         conn.execute("DELETE FROM community_posts WHERE id=? AND store_id=?",
                      (post["id"], stores.current()))

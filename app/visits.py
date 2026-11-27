@@ -47,7 +47,7 @@ def summary(store_id=None, date=None, days=7):
         recent = conn.execute(
             "SELECT substr(created_at,1,10) d, via, COUNT(*) c FROM visit_events"
             " WHERE store_id=? AND substr(created_at,1,10)>=? GROUP BY d, via ORDER BY d",
-            (sid, store.today()[:10][:8] + "01")).fetchall()
+            (sid, _start_day(date, days))).fetchall()
         by_table = conn.execute(
             "SELECT v.table_id, t.label, v.via, COUNT(*) c FROM visit_events v"
             " LEFT JOIN dining_tables t ON t.id=v.table_id"
