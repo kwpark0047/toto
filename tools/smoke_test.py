@@ -280,6 +280,57 @@ try:
           _created3 is True and _u3["id"] != _u1["id"]
           and _u3["accountId"] != _u1["accountId"] and _u3["storeId"] != _u1["storeId"],
           (_created3, _u3.get("accountId"), _u3.get("storeId"), _blocked))
+
+    # 실제 콜백 라우트(/api/auth/oauth/<제공자>/callback)를 제공자 통신만 흉내 내어 끝까지 실행한다.
+    # 라우트가 넘기는 인자 이름이 함수와 어긋나면 여기서 oauth=server 로 떨어져 실패한다.
+    from app import api as _api
+    _real_exchange, _real_fetch = _oauth.exchange_code, _oauth.fetch_profile
+    os.environ.update({"GOOGLE_CLIENT_ID": "test-client-id",
+                       "GOOGLE_CLIENT_SECRET": "test-secret",
+                       "KAKAO_CLIENT_ID": "kakao-js-key"})
+    _oauth.exchange_code = lambda provider, code, raw_base="": "test-access-token"
+    _oauth.fetch_profile = lambda provider, token: {
+        "provider": provider, "subject": "route-1", "email": "",
+        "name": "라우트테스트", "verified": False}
+    try:
+        _made = {}
+        for _p in ("google", "kakao"):
+            _st = _oauth.new_state()
+            _res = _api.handle("GET", f"/api/auth/oauth/{_p}/callback",
+                               {"code": "code-1", "state": _st}, b"",
+                               "https://example.com", "example.com",
+                               cookies=f"mj_oauth_state={_p}.{_st}", ip="127.0.0.1",
+                               ua="Mozilla/5.0 (smoke)")
+            _made[_p] = (_res.status, _res.headers.get("Location") or "",
+                         _res.headers.get("Set-Cookie") or [])
+        check("콜백 라우트: 첫 소셜 로그인은 세션을 주고 /admin 으로 이동",
+              all(v[0] == 302 and v[1] == "/admin?welcome=1"
+                  and any(c.startswith("mj_sid=") for c in v[2]) for v in _made.values()), _made)
+        check("콜백 라우트: 서버 오류(oauth=server)로 떨어지지 않음",
+              all("oauth=" not in v[1] for v in _made.values()), _made)
+        with _store.read() as _conn:
+            _staff_before = _conn.execute("SELECT COUNT(*) c FROM staff").fetchone()["c"]
+        _st = _oauth.new_state()
+        _res = _api.handle("GET", "/api/auth/oauth/google/callback",
+                           {"code": "code-2", "state": _st}, b"",
+                           "https://example.com", "example.com",
+                           cookies=f"mj_oauth_state=google.{_st}", ip="127.0.0.1", ua="Mozilla/5.0 (smoke)")
+        with _store.read() as _conn:
+            _staff_after = _conn.execute("SELECT COUNT(*) c FROM staff").fetchone()["c"]
+        check("콜백 라우트: 같은 계정 재로그인은 계정을 늘리지 않고 /admin 으로",
+              _res.headers.get("Location") == "/admin" and _staff_after == _staff_before,
+              (_res.headers.get("Location"), _staff_before, _staff_after))
+        _st = _oauth.new_state()
+        _res = _api.handle("GET", "/api/auth/oauth/google/callback",
+                           {"code": "code-3", "state": _st}, b"",
+                           "https://example.com", "example.com",
+                           cookies="mj_oauth_state=kakao." + _st, ip="127.0.0.1", ua="Mozilla/5.0 (smoke)")
+        check("콜백 라우트: 다른 제공자의 state 는 세션 없이 거부",
+              _res.headers.get("Location") == "/login?oauth=state&provider=google"
+              and not any(c.startswith("mj_sid=") for c in (_res.headers.get("Set-Cookie") or [])),
+              (_res.headers.get("Location"), _res.headers.get("Set-Cookie")))
+    finally:
+        _oauth.exchange_code, _oauth.fetch_profile = _real_exchange, _real_fetch
 finally:
     for _k, _v in _saved_env.items():
         if _v is None:

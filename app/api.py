@@ -158,7 +158,8 @@ def api_oauth_callback(ctx):
         access_token = oauth.exchange_code(provider, code, ctx["base"])
         profile = oauth.fetch_profile(provider, access_token)
         user, token, expires, created = oauth.login_with_profile(
-            profile, provider, ip=ctx["ip"], ua=ctx["ua"], store_name=q.get("store") or "")
+            profile, provider, ip=ctx["ip"], user_agent=ctx["ua"],
+            store_name=q.get("store") or "")
     except oauth.OAuthError as e:
         return fail(e.code)
     except Exception:  # 예상하지 못한 오류도 세션 없이 안내로 돌려보낸다
