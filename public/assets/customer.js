@@ -1214,7 +1214,8 @@
     } catch (e) {
       return;   // 비활성·없는 테이블은 안내 화면만 보여 준다
     }
-    await menuReady;    renderCartBar();
+    await menuReady;
+    renderCartBar();
     await loadOrders();
     loadCall();
     loadCommunity();

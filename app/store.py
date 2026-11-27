@@ -21,6 +21,9 @@ from . import config
 
 TZ = ZoneInfo("Asia/Seoul")
 
+# 이 값이 바뀌면 콜드 스타트 때 한 번 더 스키마 점검·마이그레이션을 한다.
+SCHEMA_VERSION = "2026-11-27-super-admin"
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS stores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1168,11 +1171,24 @@ def _ensure_stores(conn):
 
 
 def init():
-    """스키마 생성 + 비어 있으면 기본 데이터를 넣는다."""
+    """스키마 생성 + 비어 있으면 기본 데이터를 넣는다.
+
+    콜드 스타트마다 스키마 점검·마이그레이션을 되풀어하면 Turso 왕복이 10번 가까이 들어
+    첫 방문자가 6초 넘게 기다린다. 그래서 이 DB에 이미 같은 버전으로 준비됐다는 표시
+    (`meta.schema_version`)가 있으면 한 번의 조회로 끝낸다.
+    **스키마(테이블·컬럼·인덱스)를 바꾸면 SCHEMA_VERSION 을 반드시 올린다.**
+    """
     if not using_turso():
         os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
     conn = connect()
     try:
+        try:
+            row = conn.execute(
+                "SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        except Exception:
+            row = None
+        if row and row["value"] == SCHEMA_VERSION:
+            return
         conn.executescript(SCHEMA)
         conn.commit()
         _migrate(conn)
@@ -1224,6 +1240,9 @@ def init():
             "INSERT INTO meta(key, value) VALUES('rev','1') ON CONFLICT(key) DO NOTHING"
         )
         _ensure_zones(conn)      # 시드로 생긴 테이블도 '홀' 구역으로 묶어 준다
+        conn.execute(
+            "INSERT INTO meta(key, value) VALUES('schema_version',?)"
+            " ON CONFLICT(key) DO UPDATE SET value=excluded.value", (SCHEMA_VERSION,))
         conn.commit()
     finally:
         conn.close()
