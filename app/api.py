@@ -14,16 +14,17 @@ import re
 import time
 from urllib.parse import parse_qs
 
-from . import (auth, backup, catalog, config, customers, inventory, kitchen, notifier, oauth,
-               orders, portal, reservations, reviews, qrs, recommend, service, settings, staff,
-               stand, stats, stores, store, tables, voice_order, waiting)
+from . import (auth, backup, catalog, community, config, customers, events, groups, inventory,
+               kitchen, notifier, oauth, orders, payments, portal, reservations, reviews, qrs,
+               recommend, service, settings, staff, stand, stats, stores, store, tables,
+               visits, voice_order, waiting)
 
 JSON = "application/json; charset=utf-8"
 
-# 권한 묶음(역할이 아니라 권한 키로 검사한다 — 역할 5종 + 직원별 예외)
+# 권한 묶음(역할이 아니라 권한 키로 검사한다 — 역할 7종 + 직원별 예외)
 ADMIN = {"admin"}                  # 관리자 전용(역할)
-FRONT = {"admin", "counter", "manager"}
-ALL_STAFF = {"admin", "counter", "kitchen", "manager", "part"}
+FRONT = {"admin", "head", "counter", "manager", "hall"}
+ALL_STAFF = {"admin", "head", "counter", "hall", "kitchen", "manager", "part"}
 
 
 class Response:
@@ -92,6 +93,7 @@ def api_me(ctx):
         data["permissionCatalog"] = [{"code": c, "label": l, "desc": d} for c, l, d in config.PERMISSIONS]
         data["stores"] = stores.list_stores(include_inactive=False)
         data["storeId"] = user.get("storeId") or 1
+        data["groups"] = groups.list_groups()["groups"]
         data["canSwitchStore"] = user.get("role") == "admin"
     return json_response(data)
 
@@ -157,10 +159,14 @@ def api_oauth_callback(ctx):
 
 
 def _session_data(user):
+    with stores.account_scope((user or {}).get("accountId")):
+        my_stores = stores.list_stores(include_inactive=False)
+        my_groups = groups.list_groups()["groups"] if user else []
     data = {"user": user, "store": settings.public(), "setup": _setup(),
-            "stores": stores.list_stores(include_inactive=False),
+            "stores": my_stores,
             "storeId": (user or {}).get("storeId") or 1,
             "canSwitchStore": bool(user) and user.get("role") == "admin",
+            "groups": my_groups,
             "permissionCatalog": [{"code": c, "label": l, "desc": d} for c, l, d in config.PERMISSIONS],
             "roleLabels": config.ROLE_LABELS, "roleHints": config.ROLE_HINTS}
     return data
@@ -405,6 +411,7 @@ def api_kitchen(ctx):
         "queue": kitchen.queue(),
         "serving": kitchen.serving(),
         "counts": kitchen.counts(),
+        "summary": kitchen.summary(),
         "tables": kitchen.tables(),
         "rev": store.rev(),
         "serverTime": store.now(),
@@ -424,7 +431,8 @@ def api_order_create(ctx):
     b = ctx["body"]
     return json_response(orders.create(
         b.get("table"), b.get("items") or [], b.get("customer") or {}, b.get("note", ""),
-        b.get("pointsUsed", 0), b.get("preorderToken"), b.get("receipt")
+        b.get("pointsUsed", 0), b.get("preorderToken"), b.get("receipt"),
+        channel=b.get("channel"), pay_method=b.get("payMethod"), coupon_id=b.get("couponId")
     ), 201)
 
 
@@ -1019,9 +1027,10 @@ def api_qr_config(ctx):
         "tables": tables.list_tables(),
         "store": settings.public(),
         "nfc": [{"code": t["code"], "label": t["label"],
-                 "url": qrs.table_url(ctx["base"], t["code"]), "active": t["active"]}
+                 "url": qrs.nfc_table_url(ctx["base"], t["code"]), "active": t["active"]}
                 for t in tables.list_tables()],
         "storeUrl": qrs.store_url(ctx["base"]),
+        "nfcGuide": tables.nfc_guide(ctx["base"]),
     })
 
 
@@ -1484,16 +1493,238 @@ def api_payroll_csv(ctx):
         "Content-Disposition": f'attachment; filename="payroll-{month}.csv"'})
 
 
+# ================================================================ 매장 그룹·구역·결제·이벤트·커뮤니티
+
+@route("GET", r"/api/groups", perm=("settings.edit", "sales.view"))
+def api_groups(ctx):
+    data = groups.list_groups()
+    data["currentStoreId"] = stores.current()
+    return json_response(data)
+
+
+@route("POST", r"/api/groups", perm="settings.edit")
+def api_groups_create(ctx):
+    return json_response(groups.create(ctx["body"]), 201)
+
+
+@route("PATCH", r"/api/groups/(?P<id>\d+)", perm="settings.edit")
+def api_groups_update(ctx):
+    return json_response(groups.update(int(ctx["match"]["id"]), ctx["body"]))
+
+
+@route("DELETE", r"/api/groups/(?P<id>\d+)", perm="settings.edit")
+def api_groups_delete(ctx):
+    return json_response(groups.delete(int(ctx["match"]["id"])))
+
+
+@route("GET", r"/api/groups/(?P<id>\d+)/summary", perm="sales.view")
+def api_groups_summary(ctx):
+    return json_response(groups.summary(int(ctx["match"]["id"]),
+                                        ctx["query"].get("date")))
+
+
+@route("POST", r"/api/groups/(?P<id>\d+)/copy-menu", perm="settings.edit")
+def api_groups_copy_menu(ctx):
+    b = ctx["body"]
+    return json_response(groups.copy_menu(int(ctx["match"]["id"]), b.get("fromStore"),
+                                         b.get("toStores"),
+                                         b.get("onDuplicate", "skip")), 201)
+
+
+@route("POST", r"/api/groups/(?P<id>\d+)/transfer-staff", perm="settings.edit")
+def api_groups_transfer(ctx):
+    b = ctx["body"]
+    return json_response(groups.transfer_staff(int(ctx["match"]["id"]), b.get("staffId"),
+                                              b.get("toStore")), 201)
+
+
+@route("POST", r"/api/groups/(?P<id>\d+)/apply-settings", perm="settings.edit")
+def api_groups_apply(ctx):
+    return json_response(groups.apply_settings(int(ctx["match"]["id"])))
+
+
+@route("GET", r"/api/zones", perm=("settings.edit", "order.manage"))
+def api_zones(ctx):
+    return json_response({"zones": tables.zones(include_inactive=True)})
+
+
+@route("POST", r"/api/zones", perm="settings.edit")
+def api_zones_create(ctx):
+    return json_response(tables.create_zone(ctx["body"].get("name")), 201)
+
+
+@route("PATCH", r"/api/zones/(?P<id>\d+)", perm="settings.edit")
+def api_zones_update(ctx):
+    return json_response(tables.update_zone(int(ctx["match"]["id"]), ctx["body"]))
+
+
+@route("DELETE", r"/api/zones/(?P<id>\d+)", perm="settings.edit")
+def api_zones_delete(ctx):
+    return json_response(tables.delete_zone(int(ctx["match"]["id"])))
+
+
+@route("POST", r"/api/tables/bulk", perm="settings.edit")
+def api_tables_bulk(ctx):
+    b = ctx["body"]
+    return json_response(tables.bulk_create(b.get("zoneId"), b.get("prefix"),
+                                            b.get("count"), b.get("seats", 4),
+                                            b.get("start", 1)), 201)
+
+
+@route("GET", r"/api/nfc/guide", perm="settings.edit")
+def api_nfc_guide(ctx):
+    return json_response(tables.nfc_guide(ctx["query"].get("base") or ctx["base"]))
+
+
+@route("GET", r"/api/stats/scans", perm="sales.view")
+def api_stats_scans(ctx):
+    q = ctx["query"]
+    return json_response(visits.summary(stores.current(), q.get("date"), q.get("days", 7)))
+
+
+@route("POST", r"/api/public/visit")
+def api_public_visit(ctx):
+    """손님 화면을 QR로 열었는지 NFC로 열었는지 기록한다(개인정보 없음)."""
+    b = ctx["body"]
+    sid = stores.current()
+    table_id = None
+    code = (b.get("code") or "").strip()
+    if code:
+        t = tables.by_code(code)
+        if t:
+            sid, table_id = t["storeId"], t["id"]
+    return json_response(visits.record(sid, table_id, b.get("via"), b.get("path")), 201)
+
+
+# ---------------------------------------------------------------- 결제
+
+@route("GET", r"/api/payments/methods")
+def api_payment_methods(ctx):
+    return json_response({"methods": payments.available(), "channel": settings.channel(),
+                          "store": settings.public()})
+
+
+@route("POST", r"/api/orders/(?P<id>\d+)/transfer")
+def api_order_transfer(ctx):
+    """손님이 계좌이체를 고르고 입금자명을 남긴다. 결제는 사장님 확인 후 완료."""
+    o = orders.get(int(ctx["match"]["id"]))
+    table = ctx["body"].get("table")
+    if table is not None and str(o["table"]) != str(table) and o.get("channel") == "table":
+        raise ValueError("주문 정보가 맞지 않습니다")
+    with stores.use(o.get("storeId") or stores.current()):
+        return json_response(payments.begin_transfer(o["id"], ctx["body"].get("depositor")))
+
+
+@route("POST", r"/api/orders/(?P<id>\d+)/pay", perm="order.manage")
+def api_order_pay(ctx):
+    b = ctx["body"]
+    return json_response(payments.charge(int(ctx["match"]["id"]), b.get("method") or "CASH",
+                                         b.get("memo", ""), b.get("depositor", "")))
+
+
+@route("POST", r"/api/orders/(?P<id>\d+)/payment-confirm", perm="order.manage")
+def api_order_confirm(ctx):
+    return json_response(payments.confirm(int(ctx["match"]["id"]), ctx["body"].get("method")))
+
+
+@route("POST", r"/api/orders/(?P<id>\d+)/refund", perm="order.cancel")
+def api_order_refund(ctx):
+    return json_response(payments.cancel(int(ctx["match"]["id"])))
+
+
+@route("GET", r"/api/payments", perm="order.manage")
+def api_payments(ctx):
+    q = ctx["query"]
+    return json_response({"methods": payments.available(), "config": settings.payments(),
+                          "pendingTransfers": payments.pending_transfers(),
+                          "summary": payments.summary(q.get("date"))})
+
+
+@route("GET", r"/api/payments/summary", perm="sales.view")
+def api_payments_summary(ctx):
+    return json_response(payments.summary(ctx["query"].get("date")))
+
+
+# ---------------------------------------------------------------- 고객 이벤트·쿠폰
+
+@route("GET", r"/api/events", perm=("order.manage", "settings.edit", "customer.view"))
+def api_events(ctx):
+    return json_response(events.events_view())
+
+
+@route("POST", r"/api/coupons", perm="settings.edit")
+def api_coupons_create(ctx):
+    return json_response(events.create_coupon(ctx["body"]), 201)
+
+
+@route("GET", r"/api/customers/(?P<id>\d+)/coupons", perm="customer.view")
+def api_customer_coupons(ctx):
+    cid = int(ctx["match"]["id"])
+    return json_response({"coupons": events.customer_coupons(cid),
+                          "member": customers.get_member(cid)})
+
+
+@route("POST", r"/api/customers/(?P<id>\d+)/coupons", perm="customer.view")
+def api_customer_coupon_issue(ctx):
+    return json_response(events.issue_to(int(ctx["match"]["id"]),
+                                         ctx["body"].get("couponId")), 201)
+
+
+@route("GET", r"/api/member/coupons")
+def api_member_coupons(ctx):
+    """주문 화면: 연락처로 쓸 수 있는 쿠폰만 확인한다(이름·이력은 돌려주지 않는다)."""
+    phone = ctx["query"].get("phone") or ""
+    m = customers.by_phone(phone)
+    if not m:
+        return json_response({"member": False, "coupons": []})
+    usable = [c for c in events.customer_coupons(m["id"], "ISSUED") if c["usable"]]
+    return json_response({"member": True, "coupons": usable, "points": m["points"]})
+
+
+# ---------------------------------------------------------------- 로컬 커뮤니티
+
+@route("GET", r"/api/community", perm=("settings.edit", "order.manage"))
+def api_community(ctx):
+    data = community.list_posts()
+    data["summary"] = community.summary()
+    return json_response(data)
+
+
+@route("POST", r"/api/community", perm="settings.edit")
+def api_community_create(ctx):
+    return json_response(community.create(ctx["body"]), 201)
+
+
+@route("PATCH", r"/api/community/(?P<id>\d+)", perm="settings.edit")
+def api_community_update(ctx):
+    return json_response(community.update(int(ctx["match"]["id"]), ctx["body"]))
+
+
+@route("DELETE", r"/api/community/(?P<id>\d+)", perm="settings.edit")
+def api_community_delete(ctx):
+    return json_response(community.delete(int(ctx["match"]["id"])))
+
+
+@route("GET", r"/api/public/community")
+def api_public_community(ctx):
+    raw = ctx["query"].get("store")
+    sid = int(raw) if str(raw or "").isdigit() else stores.current()
+    return json_response(community.public(sid))
+
+
 # ---------------------------------------------------------------- 디스패치
 
 def handle(method, path, query, body, base, host, user=None, token=None, ip="", ua="", cookies=""):
+    # 사업자 계정 범위: 로그인 사용자는 자기 계정의 매장만 본다(손님은 계정 없음).
     # 지금 일하는 매장: 로그인 사용자는 세션의 매장, 손님은 ?store= 또는 기본 매장(1)
-    sid = (user or {}).get("storeId")
-    if not sid:
-        raw = (query or {}).get("store")
-        sid = int(raw) if str(raw or "").isdigit() else 1
-    with stores.use(sid):
-        return _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookies)
+    aid = (user or {}).get("accountId") or 0
+    with stores.account_scope(aid):
+        sid = (user or {}).get("storeId")
+        if not sid:
+            raw = (query or {}).get("store")
+            sid = int(raw) if str(raw or "").isdigit() else 1
+        with stores.use(sid):
+            return _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookies)
 
 
 def _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookies=""):

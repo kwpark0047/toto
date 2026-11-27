@@ -126,6 +126,37 @@ def tables():
     return out
 
 
+def soldout_alerts():
+    """품절 연동 알림.
+
+    - 지금 품절인데 조리 대기 주문에 들어 있는 메뉴(손님·홀에 먼저 알려야 함)
+    - 품절로 바꿨지만 화면에 표시가 늦을 수 있으니 목록을 함께 준다
+    """
+    menu = {i["id"]: i for i in catalog.items()}
+    sold = [i for i in menu.values() if i["soldout"]]
+    sold_ids = {i["id"] for i in sold}
+    hits = []
+    for o in orders.active():
+        bad = [it["name"] for it in o.get("items", []) if it.get("itemId") in sold_ids]
+        if bad:
+            hits.append({"orderId": o["id"], "orderNo": o["orderNo"], "table": o["table"],
+                         "tableLabel": o["tableLabel"], "items": bad})
+    return {"soldout": [{"itemId": i["id"], "name": i["name"], "category": i["category"]}
+                        for i in sold],
+            "affectedOrders": hits}
+
+
+def summary():
+    """주방 화면 상단용 상태 요약(경로·품절 알림 포함)."""
+    rows = queue()
+    channels = {}
+    for o in rows:
+        key = o.get("channel") or "table"
+        channels[key] = channels.get(key, 0) + 1
+    return {**counts(), "channels": channels, "channelLabels": config.CHANNEL_LABELS,
+            "alerts": soldout_alerts()}
+
+
 def serving():
     """서빙 대기(조리완료) 목록. 오래 기다린 순서대로, 경과 시간을 함께 준다."""
     rows = []

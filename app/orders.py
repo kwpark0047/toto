@@ -6,8 +6,10 @@
 결제는 현금만 다룬다. 카드·간편결제는 자리만 있고 실제 결제는 일어나지 않는다.
 테이블은 tables 모듈에서 확인한다(비활성 테이블은 주문을 받지 않는다).
 """
-from . import catalog, customers, inventory, settings, stores, store, tables
+from . import catalog, config, customers, events, inventory, settings, stores, store, tables
 from .config import STATUS_LABELS
+
+CHANNEL_LABELS = config.CHANNEL_LABELS
 
 # 주방 4단계: 접수 → 조리중 → 조리완료(서빙 대기) → 서빙 완료
 STATUS_FLOW = {
@@ -75,6 +77,15 @@ def _row_to_order(conn, r, with_items=True, labels=None):
         "paymentStatus": r["payment_status"],
         "paymentMethod": r["payment_method"],
         "subtotal": r["subtotal"] or r["total"],
+        "discount": (r["discount"] if "discount" in r.keys() else 0) or 0,
+        "couponId": r["coupon_id"] if "coupon_id" in r.keys() else None,
+        "paymentMethodLabel": config.PAYMENT_METHOD_LABELS.get(r["payment_method"], r["payment_method"]),
+        "channel": (r["channel"] if "channel" in r.keys() else "table") or "table",
+        "channelLabel": CHANNEL_LABELS.get(
+            (r["channel"] if "channel" in r.keys() else "table") or "table", ""),
+        "transferDepositor": (r["transfer_depositor"] if "transfer_depositor" in r.keys() else "") or "",
+        "transferConfirmedAt": (r["transfer_confirmed_at"]
+                                if "transfer_confirmed_at" in r.keys() else None),
         "pointsUsed": r["points_used"],
         "pointsEarned": r["points_earned"],
         "reservedFor": r["reserved_for"] if "reserved_for" in r.keys() else None,
@@ -142,15 +153,52 @@ def _mask_no(value):
     return f"{d[:3]}-****-{d[-4:]}"
 
 
-def create(table_no, items, customer=None, note="", points_used=0, preorder_token=None, receipt=None):
-    """주문을 만든다. 결제는 하지 않고 '결제 전(UNPAID)' 상태로 접수된다."""
+def create(table_no, items, customer=None, note="", points_used=0, preorder_token=None, receipt=None,
+           channel=None, pay_method=None, coupon_id=None):
+    """주문을 만든다. 결제는 하지 않고 '결제 전(UNPAID)' 상태로 접수된다.
+
+    channel: table(매장 테이블) · pickup(포장) · delivery(배달) · preorder(대기 미리 주문)
+    pay_method: CASH · TRANSFER · CARD · PAY (매장 설정에서 켜 둔 것만)
+    """
     customer = customer or {}
-    try:
-        table_no = int(table_no)
-    except (TypeError, ValueError):
-        raise ValueError("테이블 번호가 올바르지 않습니다")
-    reserved_for = None
+    ch = (channel or "").strip().lower()
     if preorder_token:
+        ch = "preorder"
+    if not ch:
+        ch = "table"
+    if ch not in config.CHANNEL_LABELS:
+        raise ValueError("주문 방식이 올바르지 않습니다")
+
+    conf = settings.channel()
+    if ch == "table":
+        if not settings.offline_on():
+            raise ValueError("이 매장은 지금 매장 테이블 주문을 받지 않습니다(온라인 전용 매장)")
+    elif ch == "preorder":
+        if not conf.get("preorder"):
+            raise ValueError("이 매장은 대기 중 미리 주문을 받지 않습니다")
+    else:
+        if not settings.online_on():
+            raise ValueError("이 매장은 지금 온라인 주문(포장·배달)을 받지 않습니다")
+        if ch == "pickup" and not conf.get("pickup"):
+            raise ValueError("이 매장은 포장 주문을 받지 않습니다")
+        if ch == "delivery" and not conf.get("delivery"):
+            raise ValueError("이 매장은 배달 주문을 받지 않습니다")
+        if not (customer.get("name") or "").strip() or not (customer.get("phone") or "").strip():
+            raise ValueError("포장·배달 주문은 이름과 연락처를 남겨 주세요")
+
+    method = (pay_method or "CASH").strip().upper()
+    if method not in config.PAYMENT_METHOD_LABELS:
+        raise ValueError("결제수단이 올바르지 않습니다")
+    pay_conf = settings.payments()
+    pay_key = {"CASH": "cash", "TRANSFER": "transfer", "CARD": "card", "PAY": "quick"}[method]
+    if not pay_conf[pay_key].get("enabled"):
+        raise ValueError(f"{config.PAYMENT_METHOD_LABELS[method]} 결제는 이 매장에서 쓰지 않습니다")
+    if method == "TRANSFER" and not (pay_conf["transfer"].get("bank")
+                                    and pay_conf["transfer"].get("accountNo")):
+        raise ValueError("이 매장은 아직 계좌이체 계좌를 등록하지 않았습니다")
+
+    reserved_for = None
+    if ch == "preorder":
         from . import waiting
         ticket = waiting.by_token(preorder_token)
         if ticket["status"] not in ("WAITING", "CALLED"):
@@ -158,7 +206,14 @@ def create(table_no, items, customer=None, note="", points_used=0, preorder_toke
         reserved_for = ticket["id"]
         table = {"id": 0, "label": "대기(미리 주문)", "active": True,
                  "storeId": ticket.get("storeId") or stores.current()}
+    elif ch in ("pickup", "delivery"):
+        table = {"id": 0, "label": "포장" if ch == "pickup" else "배달", "active": True,
+                 "storeId": stores.current()}
     else:
+        try:
+            table_no = int(table_no)
+        except (TypeError, ValueError):
+            raise ValueError("테이블 번호가 올바르지 않습니다")
         table = tables.get_any(table_no)
         if not table["active"]:
             raise ValueError(f"'{table['label']}' 테이블은 지금 주문을 받지 않습니다. 직원에게 문의해 주세요")
@@ -169,12 +224,14 @@ def create(table_no, items, customer=None, note="", points_used=0, preorder_toke
     ctx = stores.use(table.get("storeId") or stores.current())
     ctx.__enter__()
     try:
-        return _create_in_store(table, items, customer, note, points_used, reserved_for, receipt)
+        return _create_in_store(table, items, customer, note, points_used, reserved_for, receipt,
+                                channel=ch, pay_method=method, coupon_id=coupon_id)
     finally:
         ctx.__exit__(None, None, None)
 
 
-def _create_in_store(table, items, customer, note, points_used, reserved_for, receipt):
+def _create_in_store(table, items, customer, note, points_used, reserved_for, receipt,
+                     channel="table", pay_method="CASH", coupon_id=None):
 
     # 1) 메뉴 확인과 금액 계산 (고객이 보낸 가격은 쓰지 않는다)
     catalog_now = {i["id"]: i for i in catalog.items()}
@@ -203,6 +260,12 @@ def _create_in_store(table, items, customer, note, points_used, reserved_for, re
             "qty": qty, "options": ", ".join(opts),
         })
         subtotal += item["price"] * qty
+    if channel == "delivery":
+        try:
+            fee = int(settings.channel().get("deliveryFee") or 0)
+        except (TypeError, ValueError):
+            fee = 0
+        subtotal += max(0, fee)
 
     try:
         points_used = int(points_used or 0)
@@ -210,6 +273,16 @@ def _create_in_store(table, items, customer, note, points_used, reserved_for, re
         raise ValueError("사용할 포인트가 올바르지 않습니다")
     if points_used < 0:
         raise ValueError("사용할 포인트가 올바르지 않습니다")
+
+    # 2) 이벤트·쿠폰 (주문 시점 설정으로 다시 계산한다)
+    cid_guess = None
+    if (customer.get("phone") or "").strip():
+        m = customers.by_phone(customer.get("phone"))
+        cid_guess = m["id"] if m else None
+    coupon = events.preview_coupon(cid_guess, coupon_id, subtotal) if coupon_id else \
+        {"id": None, "amount": 0, "title": ""}
+    time_amount, time_label = events.time_discount(subtotal)
+    discount = min(subtotal, int(coupon["amount"]) + int(time_amount))
 
     receipt_type, receipt_no = _clean_receipt(receipt)
     ts = store.now()
@@ -221,21 +294,24 @@ def _create_in_store(table, items, customer, note, points_used, reserved_for, re
         order_no = _order_no(conn)
         cur = conn.execute(
             "INSERT INTO orders(store_id, order_no, table_no, status, payment_status, payment_method,"
-            " subtotal, points_used, points_earned, total, customer_id, customer_name, customer_phone,"
-            " note, created_at, updated_at)"
-            " VALUES(?,?,?,?,'UNPAID','CASH',?,0,0,?,?,?,?,?,?,?)",
-            (sid, order_no, table["id"], status, subtotal, subtotal, cid, customer.get("name", "").strip(),
-             customer.get("phone", "").strip(), (note or "").strip(), ts, ts),
+            " subtotal, discount, coupon_id, points_used, points_earned, total, channel, customer_id,"
+            " customer_name, customer_phone, note, created_at, updated_at)"
+            " VALUES(?,?,?,?,'UNPAID',?,?,?,?,0,0,?,?,?,?,?,?,?,?)",
+            (sid, order_no, table["id"], status, pay_method, subtotal, discount,
+             coupon["id"], subtotal - discount, channel, cid, customer.get("name", "").strip(),
+             customer.get("phone", "").strip(), (note or "").strip()[:300], ts, ts),
         )
         order_id = cur.lastrowid
         # 포인트 차감은 주문과 같은 트랜잭션에서 처리한다(잔액이 어긋나지 않게)
         used = customers.use_points(conn, cid, order_id, points_used, subtotal) if points_used else 0
-        total = subtotal - used
+        total = subtotal - discount - used
         if total < 0:
             raise ValueError("포인트 사용 금액이 주문 금액보다 큽니다")
         if used:
             conn.execute("UPDATE orders SET points_used=?, total=? WHERE id=?",
                          (used, total, order_id))
+        if coupon["id"]:
+            events.mark_coupon_used(conn, coupon["id"], order_id)
         conn.execute("UPDATE orders SET reserved_for=?, receipt_type=?, receipt_no=? WHERE id=?",
                      (reserved_for, receipt_type, receipt_no, order_id))
         for ln in lines:
@@ -245,7 +321,10 @@ def _create_in_store(table, items, customer, note, points_used, reserved_for, re
                 (order_id, ln["itemId"], ln["name"], ln["price"], ln["qty"], ln["options"]),
             )
         store.bump(conn)
-    return get(order_id)
+    out = get(order_id)
+    out["discountLabel"] = " + ".join(x for x in (time_label,
+                                                  f"쿠폰 {coupon['title']}" if coupon["id"] else "") if x)
+    return out
 
 
 def get(order_id):
@@ -307,6 +386,7 @@ def set_status(order_id, status):
         if status == "CANCELED":
             # 취소: 쓴 포인트는 돌려주고, 이미 적립한 포인트는 회수한다
             customers.refund_use(conn, order_id)
+            events.restore_coupon(conn, order_id)
             if r["payment_status"] == "PAID":
                 customers.cancel_earn(conn, order_id)
                 inventory.restore_conn(conn, order_id)      # 재료도 되돌린다
@@ -346,6 +426,16 @@ def set_payment(order_id, paid):
             "UPDATE orders SET payment_status=?, paid_at=?, updated_at=? WHERE id=?",
             ("PAID" if paid else "UNPAID", ts if paid else None, ts, order_id),
         )
+        if paid:
+            # 첫 방문·재방문·생일·쿠폰 같은 고객 이벤트를 같은 트랜잭션에서 적용한다
+            try:
+                events.on_payment(conn, {
+                    "id": r["id"], "customer_id": r["customer_id"], "total": r["total"],
+                    "discountApplied": "시간 할인" if (r["discount"] if "discount" in r.keys() else 0)
+                    else "",
+                })
+            except ValueError:
+                pass      # 이벤트 계산 오류로 결제 확인을 막지는 않는다
         store.bump(conn)
         r = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
         return _row_to_order(conn, r, labels=tables.label_map())

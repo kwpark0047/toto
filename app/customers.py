@@ -180,6 +180,30 @@ def refund_use(conn, order_id):
         conn.execute("UPDATE orders SET points_used=0 WHERE id=?", (order_id,))
 
 
+def add_points(conn, customer_id, order_id, kind, delta, memo=""):
+    """다른 모듈(이벤트)이 같은 트랜잭션에서 포인트를 지급할 때 쓰는 공개 함수."""
+    return _add_event(conn, customer_id, order_id, kind, delta, memo)
+
+
+def birthday_of(conn, customer_id):
+    """이벤트 판단용 생일 월(1~12). 없으면 None."""
+    row = conn.execute("SELECT birthday FROM customers WHERE id=?", (int(customer_id),)).fetchone()
+    return _month_of(row["birthday"]) if row else None
+
+
+def visit_info(conn, customer_id, exclude_order=None):
+    """결제 완료 기준 방문 횟수와 마지막 방문일(첫 방문·재방문 이벤트 판단용)."""
+    sql = ("SELECT COUNT(*) c, MAX(substr(created_at,1,10)) last FROM orders"
+           " WHERE customer_id=? AND payment_status='PAID' AND status<>'CANCELED' AND store_id=?")
+    params = [customer_id, stores.current()]
+    if exclude_order:
+        sql += " AND id<>?"
+        params.append(int(exclude_order))
+    row = conn.execute(sql, params).fetchone()
+    return {"paidVisits": int(row["c"] or 0) if row else 0,
+            "lastVisit": (row["last"] if row else "") or ""}
+
+
 def history(customer_id, limit=50):
     with store.read() as conn:
         rows = conn.execute(

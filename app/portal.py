@@ -31,6 +31,9 @@ def public_stores():
     out = []
     regions = set()
     for s in stores.list_stores(include_inactive=False):
+        if not s.get("listed"):
+            # 공개 목록은 사장님이 공개를 켠 매장만 보여 준다(다른 사업자 매장 보호)
+            continue
         with stores.use(s["id"]):
             info = settings.public()
             active_tables = tables.active_tables()
@@ -47,6 +50,8 @@ def public_stores():
             "region": region,
             "tableCount": len(active_tables),
             "orderUrl": f"/t/{first_code}{q}",
+            "onlineUrl": f"/order{q}",
+            "online": info.get("channel", {}).get("mode") in ("online", "both"),
             "waitUrl": f"/wait{q}",
             "reserveUrl": f"/reserve{q}",
         })

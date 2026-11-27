@@ -26,6 +26,7 @@ PAGES = {
     "/contact": "contact.html",
     "/board": "board.html",
     "/order": "order.html",
+    "/online": "online.html",
     "/login": "login.html",
     "/signup": "signup.html",
     "/admin": "admin.html",
@@ -46,6 +47,7 @@ PAGES = {
     "/reservations": "reservations.html",
     "/reviews": "reviews.html",
     "/stores": "stores.html",
+    "/community": "community.html",
     "/account": "account.html",
     "/reserve": "reserve.html",
 }
@@ -72,6 +74,7 @@ PERMS = {
     "/reservations": ("order.manage",),
     "/reviews": ("customer.view", "settings.edit"),
     "/stores": ("settings.edit",),
+    "/community": ("settings.edit", "order.manage"),
     "/account": (),
 }
 GUEST_ONLY = ("/login", "/signup")
