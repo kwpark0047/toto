@@ -45,10 +45,26 @@ def require(user):
 
 
 def original_account_id():
-    """이 배포의 원래 사업자 계정(첫 매장 id=1 의 주인). 없으면 0."""
+    """이 배포의 원래 사업자 계정(첫 매장 id=1 의 주인). 없으면 0.
+
+    /api/auth/me 처럼 자주 부르는 곳에서도 쓰므로 60초 동안은 기억해 둔다.
+    (사장님이 바꿔도 1분 안에 따라잡는다.)
+    """
+    import time
+    now = time.monotonic()
+    cached = _orig_cache["value"]
+    if cached and now - _orig_cache["at"] < 60:
+        return cached
     with store.read() as conn:
         row = conn.execute("SELECT owner_id FROM stores WHERE id=1").fetchone()
-    return (row["owner_id"] if row else 0) or 0
+    value = (row["owner_id"] if row else 0) or 0
+    # 0(아직 계정 없음)은 기억하지 않는다 — 첫 가입 직후 바로 인식되게.
+    if value:
+        _orig_cache.update(value=value, at=now)
+    return value
+
+
+_orig_cache = {"value": None, "at": 0.0}
 
 
 def claim_allowed(email, account_id=None, verified=False):
