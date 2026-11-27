@@ -23,6 +23,8 @@
     }
     const data = await api("/api/state");
     try { S.dashboard = await api("/api/dashboard"); } catch (e) { S.dashboard = null; }
+    try { S.payments = await api("/api/payments"); } catch (e) { S.payments = null; }
+    renderTransfers();
     const newMax = data.orders.reduce((m, o) => Math.max(m, o.id), 0);
     if (!S.first && newMax > S.maxId) {
       const fresh = data.orders.filter((o) => o.id > S.maxId);
@@ -190,7 +192,7 @@
         <span class="badge brand">${esc(o.tableLabel)}</span>
         <span class="meta">${hhmm(o.createdAt)} · ${ago(o.createdAt)}</span>
         <span class="badge ${o.status === "NEW" ? "brand" : o.status === "COOKING" ? "amber" : o.status === "DONE" ? "amber" : o.status === "SERVED" ? "green" : o.status === "CANCELED" ? "red" : ""}">${STATUS_TEXT[o.status]}</span>
-        <span class="badge ${o.paymentStatus === "PAID" ? "green" : "red"}">${o.paymentStatus === "PAID" ? "현금 완료" : "결제 전"}</span>
+        <span class="badge ${o.paymentStatus === "PAID" ? "green" : o.paymentMethod === "TRANSFER" ? "amber" : "red"}">${o.paymentStatus === "PAID" ? `${esc(o.paymentMethodLabel || "현금")} 완료` : o.paymentMethod === "TRANSFER" ? "입금 대기" : "결제 전"}</span>
         ${o.reserved ? '<span class="badge amber">미리 주문</span>' : ""}
         ${o.receiptType !== "none" ? `<span class="badge ${o.receiptIssued ? "green" : "line"}">영수증 ${o.receiptIssued ? "발급" : "요청"}</span>` : ""}
         <button class="btn sm ghost" style="margin-left:auto" data-detail="${o.id}">상세</button>
@@ -201,8 +203,12 @@
         <span class="total nums">${won(o.total)}</span>
         ${o.pointsUsed ? `<span class="badge amber">포인트 -${points(o.pointsUsed)}</span>` : ""}
         ${o.paymentStatus === "UNPAID" && o.status !== "CANCELED"
-          ? `<button class="btn sm primary" data-act="pay" data-id="${o.id}">💵 현금 받음</button>`
-          : `<span class="muted small">결제 확인 ${o.paidAt ? hhmm(o.paidAt) : ""}${o.pointsEarned ? ` · ${points(o.pointsEarned)} 적립` : ""}</span>`}
+          ? (o.paymentMethod === "TRANSFER"
+              ? `<button class="btn sm primary" data-act="confirm" data-id="${o.id}">🏦 입금 확인${o.transferDepositor ? ` (${esc(o.transferDepositor)})` : ""}</button>`
+              : o.paymentMethod === "CARD" || o.paymentMethod === "PAY"
+                ? `<button class="btn sm primary" data-act="cardpay" data-id="${o.id}">💳 ${esc(o.paymentMethodLabel)} 확인</button>`
+                : `<button class="btn sm primary" data-act="pay" data-id="${o.id}">💵 현금 받음</button>`)
+          : `<span class="muted small">${esc(o.paymentMethodLabel || "현금")} 결제 확인 ${o.paidAt ? hhmm(o.paidAt) : ""}${o.pointsEarned ? ` · ${points(o.pointsEarned)} 적립` : ""}</span>`}
         ${next ? `<button class="btn sm ${next.cls}" data-act="status" data-id="${o.id}" data-to="${next.status}">${next.label}</button>` : ""}
         ${["NEW", "ACCEPTED", "COOKING", "DONE"].includes(o.status)
           ? `<button class="btn sm danger" data-act="status" data-id="${o.id}" data-to="CANCELED">취소</button>` : ""}
@@ -219,6 +225,15 @@
         const o = await api(`/api/orders/${id}/payment`, { method: "POST", body: { paid: true } });
         toast(`#${o.orderNo} 현금 ${won(o.total)} 결제 확인${o.pointsEarned ? ` · ${points(o.pointsEarned)} 적립` : ""}`, "ok");
         beep(1, 660);
+      } else if (b.dataset.act === "confirm") {
+        const r = await api(`/api/orders/${id}/payment-confirm`, { method: "POST", body: {} });
+        toast(`#${r.order.orderNo} 입금 확인 · ${won(r.order.total)} 결제 완료`, "ok");
+        beep(1, 660);
+      } else if (b.dataset.act === "cardpay") {
+        if (!confirm("카드·간편결제는 PG 미연결 상태라 모의 승인으로만 기록됩니다. 계속할까요?")) return;
+        const o = await api(`/api/orders/${id}/pay`, { method: "POST", body: { method: b.dataset.method || "CARD" } });
+        toast(`#${o.order.orderNo} 결제 확인${o.simulated ? " (모의 승인)" : ""}`, "ok");
+        beep(1, 660);
       } else if (b.dataset.act === "status") {
         const o = await api(`/api/orders/${id}/status`, { method: "POST", body: { status: b.dataset.to } });
         toast(`#${o.orderNo} → ${STATUS_TEXT[o.status]}`, "ok");
@@ -230,6 +245,33 @@
     } finally {
       b.disabled = false;
     }
+  }
+
+  function renderTransfers() {
+    const box = $("#transferBox");
+    if (!box) return;
+    const pend = (S.payments && S.payments.pendingTransfers) || {};
+    const rows = pend.pending || [];
+    const acct = pend.account || {};
+    if ($("#transferBadge")) $("#transferBadge").textContent = rows.length;
+    box.innerHTML = rows.length ? rows.map((r) => `
+      <div class="row between wrap" style="padding:7px 0;border-bottom:1px solid var(--line);gap:6px">
+        <span class="small">#${esc(r.orderNo)} <b>${won(r.total)}</b><br>
+          <span class="muted">입금자 ${esc(r.depositor || "(없음)")}</span></span>
+        <button class="btn sm primary" data-tconfirm="${r.orderId}">입금 확인</button>
+      </div>`).join("") +
+      `<p class="small muted" style="margin:8px 0 0">${esc(acct.bank || "")} ${esc(acct.accountNo || "")}${acct.holder ? ` · ${esc(acct.holder)}` : ""}${acct.bank || acct.accountNo ? "" : "계좌를 설정에서 넣으면 안내가 나갑니다"}</p>`
+      : "입금 확인을 기다리는 주문이 없습니다." +
+        (acct.accountNo ? `<div class="small muted" style="margin-top:4px">${esc(acct.bank)} ${esc(acct.accountNo)}</div>` : "");
+    $$("#transferBox [data-tconfirm]").forEach((b) => b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await api(`/api/orders/${b.dataset.tconfirm}/payment-confirm`, { method: "POST", body: {} });
+        toast(`#${r.order.orderNo} 입금 확인 · ${won(r.order.total)}`, "ok");
+        beep(1, 660);
+        await load();
+      } catch (e) { toast(e.message, "err"); b.disabled = false; }
+    });
   }
 
   function renderTables() {

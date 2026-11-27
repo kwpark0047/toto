@@ -134,6 +134,8 @@
       c = await api(`/api/customers/${id}`);
     } catch (e) { toast(e.message, "err"); return; }
     S.editing = c;
+    let coupons = [];
+    try { coupons = (await api(`/api/customers/${id}/coupons`)).coupons || []; } catch (e) { coupons = []; }
     $("#csTitle").textContent = `${c.name} · ${c.gradeLabel}`;
     const grades = S.counts.grades || [];
     $("#csBody").innerHTML = `
@@ -162,6 +164,14 @@
 
       ${(c.favoriteMenus || []).length ? `<p class="small muted">자주 시킨 메뉴: ${c.favoriteMenus.map((f) => `${esc(f.name)} ×${f.qty}`).join(", ")}</p>` : ""}
 
+      <h4 style="margin:16px 0 8px;font-size:16px">쿠폰</h4>
+      <div id="csCoupons" class="small muted">${coupons.length
+        ? coupons.map((cp) => `<div class="row between" style="padding:4px 0;border-bottom:1px solid var(--line)">
+            <span>${esc(cp.title)} · ${cp.amount.toLocaleString()}원${cp.minSpend ? ` (${cp.minSpend.toLocaleString()}원 이상)` : ""}</span>
+            <span class="badge ${cp.usable ? "green" : cp.status === "USED" ? "" : "red"}">${cp.usable ? "사용 가능" : cp.status === "USED" ? "사용함" : "만료"}</span></div>`).join("")
+        : "발급된 쿠폰이 없습니다."}</div>
+      <button class="btn sm ghost" id="csCoupon" style="margin-top:8px">기본 쿠폰 발급</button>
+
       <h4 style="margin:16px 0 8px;font-size:16px">포인트 이력</h4>
       ${(c.pointHistory || []).length ? `<table class="table">
         <thead><tr><th>시각</th><th>내용</th><th>증감</th><th>잔액</th></tr></thead>
@@ -184,6 +194,16 @@
         </tr>`).join("")}</tbody></table>` : '<p class="small muted">주문 이력이 없습니다(직접 등록한 회원).</p>'}
       <p class="small muted" style="margin-top:14px">연락처는 주문 확인·방문 기록 목적으로만 쓰고, 문자 발송은 2단계에서 붙습니다.</p>`;
     openSheet("custSheet");
+    const cbtn = $("#csCoupon");
+    if (cbtn) cbtn.onclick = async () => {
+      cbtn.disabled = true;
+      try {
+        const r = await api(`/api/customers/${id}/coupons`, { method: "POST", body: {} });
+        toast(r.issued ? `쿠폰을 발급했습니다: ${r.coupon.title}` : (r.reason || "발급하지 못했습니다"),
+          r.issued ? "ok" : "err");
+        await openCust(id);
+      } catch (e) { toast(e.message, "err"); cbtn.disabled = false; }
+    };
   }
 
   $("#csSave").onclick = async () => {

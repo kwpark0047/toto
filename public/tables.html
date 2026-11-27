@@ -34,6 +34,26 @@
     </div>
   </div>
 
+  <div class="card pad" style="margin-bottom:14px">
+    <h2 style="font-size:18px;margin-bottom:4px">구역</h2>
+    <p class="small muted" style="margin:0 0 10px">홀·창가·테라스처럼 구역을 나누면 테이블을 한 번에 만들고 QR·NFC를 구역별로 챙길 수 있습니다.</p>
+    <div id="zoneList" class="row wrap" style="gap:8px"></div>
+    <div class="row wrap" style="gap:8px;margin-top:12px">
+      <input class="input" id="zoneName" maxlength="20" placeholder="새 구역 이름 (예: 테라스)" style="max-width:220px">
+      <button class="btn sm" id="zoneAdd">구역 추가</button>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <h3 style="font-size:16px;margin-bottom:8px">구역에 테이블 한 번에 만들기</h3>
+    <div class="row wrap" style="gap:8px">
+      <select class="input" id="bulkZone" style="max-width:180px"></select>
+      <input class="input" id="bulkPrefix" maxlength="12" value="창가" placeholder="이름 앞부분" style="max-width:130px">
+      <input class="input" id="bulkCount" type="number" min="1" max="50" value="4" style="max-width:90px">
+      <input class="input" id="bulkSeats" type="number" min="0" max="50" value="2" style="max-width:90px">
+      <button class="btn sm primary" id="bulkAdd">만들기</button>
+      <span class="small muted">이름은 ‘창가1 … 창가4’처럼 붙습니다.</span>
+    </div>
+  </div>
+
   <div class="card" style="overflow:hidden">
     <div id="tableList"></div>
   </div>
@@ -55,6 +75,8 @@
       <input class="input" id="tbLabel" maxlength="20" placeholder="예: 1번, 창가, 룸1"></div>
     <div class="field"><label for="tbSeats">좌석 수 (선택)</label>
       <input class="input" id="tbSeats" type="number" min="0" max="50" value="4" inputmode="numeric"></div>
+    <div class="field"><label for="tbZone">구역</label>
+      <select class="input" id="tbZone"></select></div>
     <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
       <input type="checkbox" id="tbActive" checked style="width:20px;height:20px;accent-color:var(--brand)">
       <span>사용 중</span>

@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   ["/tables", "테이블", "tables", ["settings.edit"]],
   ["/staff", "직원", "staff", ["staff.manage"]],
   ["/stores", "매장", "stores", ["settings.edit"]],
+  ["/community", "동네", "community", ["settings.edit", "order.manage"]],
   ["/settings", "설정", "settings", ["settings.edit"]],
   ["/qr", "QR", "qr", ["settings.edit"]],
 ];
@@ -25,7 +26,7 @@ function me(force) {
 }
 
 function roleIcon(role) {
-  return { admin: "👑", manager: "📋", counter: "🧾", kitchen: "🍳", part: "⏱" }[role] || "👤";
+  return { admin: "👑", head: "🎖", manager: "📋", counter: "🧾", hall: "🍽", kitchen: "🍳", part: "⏱" }[role] || "👤";
 }
 
 function can(me, perms) {

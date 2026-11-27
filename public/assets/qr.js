@@ -1,7 +1,8 @@
 // QR · NFC · 메뉴판/웨이팅 안내물 인쇄
 (() => {
   renderNav("qr");
-  const S = { base: location.origin, options: {}, stand: {}, tables: [], nfc: [], tab: "tables", v: Date.now() };
+  const S = { base: location.origin, options: {}, stand: {}, tables: [], nfc: [], nfcGuide: null,
+              tab: "tables", v: Date.now() };
 
   async function init() {
     const [info, cfg] = await Promise.all([api("/api/server-info"), api("/api/qr/config")]);
@@ -14,6 +15,7 @@
     S.stand = cfg.stand;
     S.tables = cfg.tables;
     S.nfc = cfg.nfc;
+    S.nfcGuide = cfg.nfcGuide;
     S.storeUrl = cfg.storeUrl;
     fillDesign();
     fillStand();
@@ -180,6 +182,33 @@
       try { await navigator.clipboard.writeText(b.dataset.copy); toast("주소를 복사했습니다", "ok"); }
       catch (e) { toast(b.dataset.copy); }
     });
+    const g = S.nfcGuide || {};
+    if ($("#nfcGuide")) {
+      $("#nfcGuide").innerHTML = (g.guide || []).map((line) => `<div>${esc(line)}</div>`).join("") +
+        (g.note ? `<p style="margin:8px 0 0">${esc(g.note)}</p>` : "");
+    }
+    loadScans();
+  }
+
+  async function loadScans() {
+    if (!$("#nfcStats")) return;
+    try {
+      const s = await api("/api/stats/scans");
+      const t = s.today || {};
+      const v = t.byVia || {};
+      $("#nfcStats").innerHTML = `<div class="row wrap" style="gap:8px;margin-bottom:8px">
+        <span class="badge">오늘 전체 ${t.total || 0}</span>
+        <span class="badge green">QR ${v.qr || 0}</span>
+        <span class="badge amber">NFC ${v.nfc || 0}</span>
+        <span class="badge line">NFC 비중 ${t.nfcShare || 0}%</span></div>` +
+        ((s.byTable || []).length ? `<table class="table"><thead><tr><th>테이블</th><th>QR</th><th>NFC</th><th>기타</th></tr></thead>
+          <tbody>${s.byTable.slice(0, 12).map((r) => `<tr><td>${esc(r.label)}</td>
+            <td class="nums">${r.qr || 0}</td><td class="nums">${r.nfc || 0}</td>
+            <td class="nums">${(r.link || 0) + (r.direct || 0)}</td></tr>`).join("")}</tbody></table>`
+          : '<span class="small muted">아직 유입 기록이 없습니다.</span>');
+    } catch (e) {
+      $("#nfcStats").innerHTML = '<span class="small muted">유입 통계를 불러오지 못했습니다.</span>';
+    }
   }
 
   $("#nfcCsv").onclick = () => {

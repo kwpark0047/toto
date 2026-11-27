@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>맛집 · 로컬 커뮤니티</title>
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="/assets/customers.css">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page">
+  <div class="page-head">
+    <div>
+      <div class="kicker">동네 상권</div>
+      <h1>로컬 커뮤니티</h1>
+      <p>동네 소식·단골 공지·동네 이벤트·공동 프로모션을 올립니다. ‘손님에게 보이기’를 켜면 손님 메뉴 화면 하단에 함께 나옵니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto;gap:8px">
+      <a class="btn sm ghost" href="/settings">커뮤니티 설정</a>
+      <button class="btn sm primary" id="newBtn">+ 글쓰기</button>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row wrap" style="gap:10px">
+      <span class="badge" id="comState">커뮤니티 상태</span>
+      <span class="badge line" id="comCount">글 0</span>
+      <span class="small muted" id="comIntro"></span>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div id="postList"></div>
+  </div>
+
+  <p class="small muted" style="margin-top:14px;line-height:1.7">
+    · 그룹에 속한 매장이면 ‘그룹 공동 프로모션’으로 올려 그룹 매장 손님에게 함께 보여 줄 수 있습니다.<br>
+    · 다른 사업자의 매장·그룹 글은 보이지 않고, 내 매장 글만 관리됩니다.<br>
+    · 커뮤니티를 끄면 손님 화면에는 아무 글도 나가지 않습니다.
+  </p>
+</main>
+
+<div class="sheet-back" id="back"></div>
+<div class="sheet" id="postSheet" role="dialog" aria-label="커뮤니티 글">
+  <div class="sheet-head"><h3 id="postTitle">글쓰기</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <div class="grid2">
+      <div class="field"><label for="postKind">종류</label><select class="input" id="postKind"></select></div>
+      <div class="field"><label for="postScope">보이는 범위</label>
+        <select class="input" id="postScope">
+          <option value="store">이 매장 손님에게만</option>
+          <option value="group">그룹 매장 손님에게 함께</option>
+        </select></div>
+    </div>
+    <div class="field"><label for="postHead">제목</label><input class="input" id="postHead" maxlength="80" placeholder="예: 이번 주말 동네 플리마켓"></div>
+    <div class="field"><label for="postBody">내용</label><textarea class="input" id="postBody" rows="5" maxlength="2000" placeholder="이웃 가게·단골 손님에게 알릴 내용"></textarea></div>
+    <label class="row" style="gap:8px;margin-top:8px"><input type="checkbox" id="postPinned" style="width:20px;height:20px"> <span>위에 고정</span></label>
+  </div>
+  <div class="sheet-foot row" style="gap:8px">
+    <button class="btn primary grow" id="postSave">올리기</button>
+    <button class="btn danger hidden" id="postDelete">삭제</button>
+  </div>
+</div>
+
+<script src="/assets/util.js"></script>
+<script src="/assets/nav.js"></script>
+<script src="/assets/community.js"></script>
+</body>
+</html>

@@ -42,6 +42,8 @@
     S.serving = data.serving || [];
     S.counts = data.counts;
     S.tables = data.tables;
+    S.alerts = (data.summary && data.summary.alerts) || {};
+    S.channels = (data.summary && data.summary.channels) || {};
     render();
   }
 
@@ -54,6 +56,16 @@
       <div class="kcount"><div class="k">오늘 완료</div><div class="v">${c.doneToday || 0}</div></div>`;
 
     const q = S.queue;
+    const box = $("#kdsAlerts");
+    if (box) {
+      const hits = (S.alerts && S.alerts.affectedOrders) || [];
+      const sold = (S.alerts && S.alerts.soldout) || [];
+      const bits = [];
+      if (hits.length) bits.push(`⚠️ 품절 메뉴가 주문에 있습니다 · ${hits.map((h) => `${h.tableLabel}(${h.items.join(",")})`).join(" / ")}`);
+      else if (sold.length) bits.push(`품절: ${sold.map((x) => x.name).join(", ")}`);
+      box.textContent = bits.join(" · ");
+      box.classList.toggle("hidden", !bits.length);
+    }
     $("#emptyQueue").classList.toggle("hidden", q.length > 0);
     $("#queue").innerHTML = q.map(card).join("");
     $$("#queue [data-go]").forEach((b) => b.addEventListener("click", () => act(b)));
@@ -76,7 +88,8 @@
     return `<article class="kcard ${o.delay}">
       <div class="top">
         <div class="tno">${esc(o.tableLabel || o.table + "번").replace("번", "")}<small>번</small></div>
-        <div class="ono">#${esc(o.orderNo)} · ${LABEL[o.status] || ""} ${badge ? `<span style="color:${o.delay === "late" ? "#ff9a86" : "#ffd88a"}">${badge}</span>` : ""}</div>
+        <div class="ono">#${esc(o.orderNo)} · ${LABEL[o.status] || ""} ${badge ? `<span style="color:${o.delay === "late" ? "#ff9a86" : "#ffd88a"}">${badge}</span>` : ""}
+          ${o.channel && o.channel !== "table" ? `<span style="display:inline-block;margin-left:6px;border-radius:6px;background:#1e3a5f;color:#bfe0ff;padding:1px 7px;font-size:13px">${esc(o.channelLabel || o.channel)}</span>` : ""}</div>
         <div class="el">${el}</div>
       </div>
       <div class="items">

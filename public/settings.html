@@ -82,6 +82,163 @@
     </div>
   </section>
 
+  <!-- 접이식: 온·오프라인 운영 모드 -->
+  <section class="acc" data-card="channel">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>온·오프라인 운영 모드</h3>
+        <div class="sub" id="channelSub">테이블 QR·NFC / 포장·배달·사전주문</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">매장에서 손님이 주문하는 방식을 고릅니다. 오프라인이면 테이블 QR·NFC 주문만, 온라인이면 포장·배달 주문을 받습니다.</p>
+      <div class="field"><label for="chMode">운영 모드</label>
+        <select class="input" id="chMode"></select></div>
+      <div class="row wrap" style="gap:14px;margin:10px 0">
+        <label class="row" style="gap:6px"><input type="checkbox" id="chPickup" style="width:20px;height:20px"> <span>포장 주문 받기</span></label>
+        <label class="row" style="gap:6px"><input type="checkbox" id="chDelivery" style="width:20px;height:20px"> <span>배달 주문 받기</span></label>
+        <label class="row" style="gap:6px"><input type="checkbox" id="chPreorder" style="width:20px;height:20px"> <span>대기 중 미리 주문</span></label>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="chPickupMin">포장 준비 시간(분)</label>
+          <input class="input" id="chPickupMin" type="number" min="0" max="180" inputmode="numeric"></div>
+        <div class="field"><label for="chDeliveryFee">배달료(원)</label>
+          <input class="input" id="chDeliveryFee" type="number" min="0" max="50000" step="500" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="chNote">온라인 주문 안내 문구</label>
+        <input class="input" id="chNote" maxlength="160" placeholder="예: 포장은 20분 뒤 픽업대에서 받아 주세요"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="saveChannel">저장</button>
+        <a class="btn sm ghost" id="onlineOrderLink" href="/order" target="_blank" rel="noopener">포장 주문 화면 열기</a>
+        <span class="small muted" id="channelState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 결제 수단 -->
+  <section class="acc" data-card="pay">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>결제 수단</h3>
+        <div class="sub" id="paySub">현금 · 계좌이체 · 카드 · 간편결제</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">현금은 항상 쓸 수 있습니다. 계좌이체는 계좌를 넣으면 손님 화면에 안내되고, 사장님이 입금을 확인해야 결제 완료가 됩니다.<br>
+        카드·간편결제는 PG 계약 전까지 <b>모의 승인</b>으로만 기록되며 실제 돈은 오가지 않습니다.</p>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <b>현금</b><span class="badge green">항상 사용</span>
+      </div>
+      <div class="field" style="margin-top:10px"><label>현금 안내 문구</label>
+        <input class="input" id="payCashNote" maxlength="120"></div>
+
+      <h4 style="font-size:15.5px;margin:16px 0 8px">계좌이체</h4>
+      <label class="row" style="gap:6px"><input type="checkbox" id="payTransferOn" style="width:20px;height:20px"> <span>계좌이체 받기</span></label>
+      <div class="grid2" style="margin-top:8px">
+        <div class="field"><label>은행</label><input class="input" id="payBank" maxlength="30" placeholder="예: 김포농협"></div>
+        <div class="field"><label>계좌번호</label><input class="input" id="payAccountNo" maxlength="40" inputmode="numeric" placeholder="000-0000-0000"></div>
+        <div class="field"><label>예금주</label><input class="input" id="payHolder" maxlength="30" placeholder="예: 홍길동(가게 이름)"></div>
+        <div class="field"><label>안내 문구</label><input class="input" id="payTransferNote" maxlength="120"></div>
+      </div>
+
+      <h4 style="font-size:15.5px;margin:16px 0 8px">카드</h4>
+      <label class="row" style="gap:6px"><input type="checkbox" id="payCardOn" style="width:20px;height:20px"> <span>카드 결제 받기</span></label>
+      <div class="grid2" style="margin-top:8px">
+        <div class="field"><label>수수료율(%)</label><input class="input" id="payCardFee" type="number" min="0" max="20" step="0.1"></div>
+        <div class="field"><label>PG(추후 연동)</label><input class="input" id="payCardProvider" maxlength="30" placeholder="none"></div>
+        <div class="field"><label>안내 문구</label><input class="input" id="payCardNote" maxlength="120"></div>
+      </div>
+
+      <h4 style="font-size:15.5px;margin:16px 0 8px">간편결제</h4>
+      <label class="row" style="gap:6px"><input type="checkbox" id="payQuickOn" style="width:20px;height:20px"> <span>간편결제 받기</span></label>
+      <div class="grid2" style="margin-top:8px">
+        <div class="field"><label>수수료율(%)</label><input class="input" id="payQuickFee" type="number" min="0" max="20" step="0.1"></div>
+        <div class="field"><label>안내 문구</label><input class="input" id="payQuickNote" maxlength="120"></div>
+      </div>
+      <p class="small muted" id="payAdapterNote" style="margin:10px 0 0"></p>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="savePay">저장</button>
+        <a class="btn sm ghost" href="/admin">주문·입금 확인 열기</a>
+        <span class="small muted" id="payState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 고객 이벤트 -->
+  <section class="acc" data-card="events">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>고객 이벤트·쿠폰</h3>
+        <div class="sub" id="eventsSub">첫 방문 · 재방문 · 생일 · 시간 할인 · 쿠폰</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">조건에 맞는 손님이 결제를 마치면 포인트·쿠폰이 자동으로 붙습니다. 손님이 보낸 금액은 쓰지 않고 서버가 다시 계산합니다.</p>
+      <div id="eventBox"></div>
+      <h4 style="font-size:15.5px;margin:18px 0 8px">쿠폰</h4>
+      <div id="couponBox" class="small muted">불러오는 중…</div>
+      <h4 style="font-size:15.5px;margin:18px 0 8px">최근 적용</h4>
+      <div id="eventLog" class="small muted">불러오는 중…</div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm primary" id="saveEvents">저장</button>
+        <a class="btn sm ghost" href="/customers">회원·쿠폰 보기</a>
+        <span class="small muted" id="eventsState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 로컬 커뮤니티 -->
+  <section class="acc" data-card="community">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>로컬 커뮤니티</h3>
+        <div class="sub" id="communitySub">동네 소식 · 단골 공지 · 공동 프로모션</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <p class="tip">동네 상권·이웃 매장 소식, 단골 공지, 공동 프로모션을 올립니다. 켜고 '손님에게 보이기'를 켜야 손님 화면에 나옵니다.</p>
+      <label class="row" style="gap:6px"><input type="checkbox" id="comOn" style="width:20px;height:20px"> <span>로컬 커뮤니티 참여</span></label>
+      <label class="row" style="gap:6px;margin-top:8px"><input type="checkbox" id="comShow" style="width:20px;height:20px"> <span>손님 화면에 보이기</span></label>
+      <label class="row" style="gap:6px;margin-top:8px"><input type="checkbox" id="comJoint" style="width:20px;height:20px"> <span>그룹 공동 프로모션 글쓰기 허용</span></label>
+      <div class="grid2" style="margin-top:10px">
+        <div class="field"><label>동네 이름</label><input class="input" id="comNeighborhood" maxlength="60" placeholder="예: 김포 운양동"></div>
+        <div class="field"><label>소개 문구</label><input class="input" id="comIntro" maxlength="200" placeholder="예: 운양동 이웃 가게들의 소식"></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="saveCommunity">저장</button>
+        <a class="btn sm ghost" href="/community">커뮤니티 게시판 열기</a>
+        <span class="small muted" id="communityState"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접이식: 웨이팅 -->
+  <section class="acc" data-card="waiting">
+    <div class="acc-head">
+      <div class="grow">
+        <h3>웨이팅(대기 접수)</h3>
+        <div class="sub" id="waitingSub">대기 ON/OFF · 안내 문구 · 최대 인원</div>
+      </div>
+      <button class="btn sm soft" data-open>설정하기</button>
+    </div>
+    <div class="acc-body">
+      <label class="row" style="gap:6px"><input type="checkbox" id="waitOn" style="width:20px;height:20px"> <span>웨이팅 받기</span></label>
+      <div class="field" style="margin-top:10px"><label>안내 문구</label>
+        <input class="input" id="waitNotice" maxlength="160" placeholder="예: 주말 12~1시는 대기가 30분 이상입니다"></div>
+      <div class="field" style="max-width:220px"><label>한 팀 최대 인원</label>
+        <input class="input" id="waitMaxParty" type="number" min="1" max="30" inputmode="numeric"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn sm primary" id="saveWaiting">저장</button>
+        <a class="btn sm ghost" href="/wait/admin">웨이팅 관리 열기</a>
+        <span class="small muted" id="waitingState"></span>
+      </div>
+    </div>
+  </section>
+
   <!-- 접이식: 사업자 정보 -->
   <section class="acc" data-card="biz">
     <div class="acc-head">

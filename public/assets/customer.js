@@ -9,6 +9,13 @@
   const LS_LANG = "mangjip.lang";
   const LANG = ["ko", "en", "zh", "ja"].includes(localStorage.getItem(LS_LANG)) ? localStorage.getItem(LS_LANG) : "ko";
   const PREORDER = new URLSearchParams(location.search).get("preorder") || "";
+  const VIA = (new URLSearchParams(location.search).get("via") || "qr").toLowerCase();
+
+  // QR·NFC 어느 쪽으로 들어왔는지 매장에 알린다(개인정보 없음). 실패해도 화면은 그대로.
+  if (typeof api === "function") {
+    api("/api/public/visit", { method: "POST",
+      body: { code: TABLE_CODE, via: VIA, path: location.pathname + location.search } }).catch(() => {});
+  }
 
   const state = {
     store: null,
@@ -22,6 +29,8 @@
     optionTarget: null,
     optionPick: {},
     currentOrder: null,
+    payMethods: [],
+    payPick: "CASH",
   };
 
   function loadJSON(k, d) {
@@ -264,6 +273,7 @@
     $("#checkoutSummary").innerHTML = (PREORDER ? $("#checkoutSummary").innerHTML : "") + `${lines}
       <div class="total"><span>합계</span><span class="nums">${won(cartTotal())}</span></div>`;
     setSubmitLabel(cartTotal());
+    loadPayMethods();
     const p = loadJSON(LS_PROFILE, {});
     $("#ckName").value = p.name || "";
     $("#ckPhone").value = p.phone || "";
@@ -272,9 +282,64 @@
     setTimeout(() => $("#ckName").focus({ preventScroll: true }), 300);
   }
 
+  // 동네 소식(매장 설정에서 켠 경우에만)
+  async function loadCommunity() {
+    const box = $("#communityWrap");
+    if (!box) return;
+    try {
+      const d = await api("/api/public/community");
+      if (!d.enabled || !(d.posts || []).length) { box.innerHTML = ""; return; }
+      box.innerHTML = `<div class="card pad" style="margin:16px 0">
+        <h3 style="font-size:17px;margin-bottom:4px">동네 소식</h3>
+        ${d.intro ? `<p class="small muted" style="margin:0 0 8px">${esc(d.intro)}</p>` : ""}
+        ${d.posts.slice(0, 4).map((p) => `<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+          <span class="badge">${esc(p.kindLabel)}</span> <b>${esc(p.title)}</b>
+          <div class="small muted">${esc((p.body || "").slice(0, 120))}</div></div>`).join("")}
+      </div>`;
+    } catch (e) { box.innerHTML = ""; }
+  }
+
   function setSubmitLabel(amount) {
     $("#submitOrder").innerHTML =
       `주문 완료 · <span class="nums" id="ckTotal">${won(amount)}</span>`;
+  }
+
+  // ---------------------------------------------------------------- 결제 방법
+  async function loadPayMethods() {
+    const box = $("#ckPayMethods");
+    if (!box) return;
+    try {
+      const data = await api("/api/payments/methods" + (PREORDER ? "" : ""));
+      state.payMethods = data.methods || [];
+    } catch (e) {
+      state.payMethods = [];
+    }
+    if (!state.payMethods.length) {
+      state.payMethods = [{ code: "CASH", label: "현금", note: "계산대에서 결제" }];
+    }
+    if (!state.payMethods.some((m) => m.code === state.payPick)) {
+      state.payPick = state.payMethods[0].code;
+    }
+    box.innerHTML = state.payMethods.map((m) =>
+      `<label class="row" style="gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px 12px">
+        <input type="radio" name="ckPay" value="${esc(m.code)}" ${m.code === state.payPick ? "checked" : ""} style="width:18px;height:18px">
+        <span><b>${esc(m.label)}</b>${m.note ? `<span class="small muted"> · ${esc(m.note)}</span>` : ""}</span></label>`).join("");
+    $$('#ckPayMethods input[name="ckPay"]').forEach((r) => r.onchange = () => {
+      state.payPick = r.value;
+      renderTransferBox();
+    });
+    renderTransferBox();
+  }
+
+  function renderTransferBox() {
+    const box = $("#ckTransferBox");
+    if (!box) return;
+    const isTransfer = state.payPick === "TRANSFER";
+    box.classList.toggle("hidden", !isTransfer);
+    if (!isTransfer) return;
+    const m = state.payMethods.find((x) => x.code === "TRANSFER") || {};
+    $("#ckBankLine").innerHTML = `<b>${esc(m.bank || "")} ${esc(m.accountNo || "")}</b>` +
+      (m.holder ? ` <span class="small muted">예금주 ${esc(m.holder)}</span>` : "");
   }
 
   $("#submitOrder").addEventListener("click", async (e) => {
@@ -288,12 +353,20 @@
     }
     btn.disabled = true;
     btn.textContent = "주문 접수 중…";
+    const payMethod = state.payPick || "CASH";
+    if (payMethod === "TRANSFER" && !$("#ckDepositor").value.trim()) {
+      toast("계좌이체는 입금자명을 넣어 주세요", "err");
+      btn.disabled = false;
+      setSubmitLabel(cartTotal());
+      return;
+    }
     try {
       const order = await api("/api/orders", {
         method: "POST",
         body: {
           table: PREORDER ? 0 : state.table.id,
           preorderToken: PREORDER || undefined,
+          payMethod,
           receipt: $("#ckReceipt").checked
             ? { type: $("#ckReceiptType").value, no: $("#ckReceiptNo").value.trim() }
             : { type: "none" },
@@ -303,6 +376,13 @@
           note: $("#ckNote").value.trim(),
         },
       });
+      if (payMethod === "TRANSFER") {
+        try {
+          await api(`/api/orders/${order.id}/transfer`, { method: "POST",
+            body: { table: PREORDER ? 0 : state.table.id, depositor: $("#ckDepositor").value.trim() } });
+          order.transferAccount = (state.payMethods.find((m) => m.code === "TRANSFER") || {});
+        } catch (err2) { toast(err2.message, "err"); }
+      }
       saveJSON(LS_PROFILE, { name, phone, consent });
       state.cart = [];
       saveJSON(LS_CART, []);
@@ -378,10 +458,20 @@
       .map((lbl, i) => `<div class="st ${i < step ? "done" : i === step ? "on" : ""}">
         <div class="bar"></div><div class="lbl">${lbl}</div></div>`)
       .join("");
-    const payNote =
-      order.paymentStatus === "PAID"
-        ? `<div class="pay-note" style="background:var(--green-soft);color:#1f6b38">현금 결제가 확인되었습니다. 감사합니다.</div>`
-        : `<div class="pay-note">💵 <b>${won(order.total)}</b>은 계산대에서 현금으로 결제해 주세요.<br><span style="font-weight:600">사장님이 결제를 확인하면 '결제 완료'로 바뀝니다.</span></div>`;
+    const payLabel = order.paymentMethodLabel ||
+      { CASH: "현금", TRANSFER: "계좌이체", CARD: "카드", PAY: "간편결제" }[order.paymentMethod] || "현금";
+    const acct = order.transferAccount || state.payMethods.find((m) => m.code === "TRANSFER") || {};
+    let payNote;
+    if (order.paymentStatus === "PAID") {
+      payNote = `<div class="pay-note" style="background:var(--green-soft);color:#1f6b38">${esc(payLabel)} 결제가 확인되었습니다. 감사합니다.</div>`;
+    } else if (order.paymentMethod === "TRANSFER") {
+      payNote = `<div class="pay-note">🏦 <b>${esc(acct.bank || "")} ${esc(acct.accountNo || "")}</b>${acct.holder ? ` (예금주 ${esc(acct.holder)})` : ""}로<br><b class="nums">${won(order.total)}</b>을 입금해 주세요.<br>
+        <span style="font-weight:600">입금자명을 남겼습니다. 사장님이 입금을 확인하면 '결제 완료'로 바뀝니다.</span></div>`;
+    } else if (order.paymentMethod === "CARD" || order.paymentMethod === "PAY") {
+      payNote = `<div class="pay-note">💳 <b>${won(order.total)}</b>은 카운터에서 ${esc(payLabel)}로 결제해 주세요.<br><span style="font-weight:600">사장님이 확인하면 '결제 완료'로 바뀝니다.</span></div>`;
+    } else {
+      payNote = `<div class="pay-note">💵 <b>${won(order.total)}</b>은 계산대에서 현금으로 결제해 주세요.<br><span style="font-weight:600">사장님이 결제를 확인하면 '결제 완료'로 바뀝니다.</span></div>`;
+    }
     $("#doneBody").innerHTML = `
       <div class="done-hero">
         <div class="ok">✓</div>
@@ -391,7 +481,7 @@
       <div class="done-meta">
         <div><div class="k">주문번호</div><div class="v">#${esc(order.orderNo)}</div></div>
         <div><div class="k">테이블</div><div class="v">${order.table}번</div></div>
-        <div><div class="k">결제</div><div class="v" id="donePay">${order.paymentStatus === "PAID" ? "현금 결제 완료" : "현금 · 계산대"}</div></div>
+        <div><div class="k">결제</div><div class="v" id="donePay">${order.paymentStatus === "PAID" ? `${esc(payLabel)} 결제 완료` : `${esc(payLabel)} · 확인 전`}</div></div>
         <div><div class="k">금액</div><div class="v nums">${won(order.total)}</div></div>
       </div>
       <h4>진행 상황</h4>
@@ -1072,6 +1162,7 @@
     renderCartBar();
     await loadOrders();
     loadCall();
+    loadCommunity();
     pollEvery(async () => {
       await refreshCurrent();
       const changed = await loadMenu(false);

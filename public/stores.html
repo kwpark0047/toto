@@ -45,6 +45,21 @@
     <div id="compare"></div>
   </div>
 
+  <div class="card pad" style="margin-bottom:14px">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 style="font-size:18px">매장 그룹</h3>
+      <span class="small muted">브랜드별 · 지역별 · 직영/가맹</span>
+    </div>
+    <p class="small muted" style="margin:0 0 10px">매장을 그룹으로 묶으면 그룹 통합 매출을 보고, 메뉴를 한 번에 복사하고, 직원을 그룹 안에서 옮기고, 운영 모드·웨이팅을 한 번에 맞출 수 있습니다.</p>
+    <div id="groupList">불러오는 중…</div>
+    <div class="row wrap" style="gap:8px;margin-top:12px">
+      <input class="input" id="grpName" maxlength="40" placeholder="그룹 이름 (예: 운양동 직영)" style="max-width:240px">
+      <select class="input" id="grpKind" style="max-width:150px"></select>
+      <button class="btn sm" id="grpAdd">그룹 만들기</button>
+    </div>
+    <div id="grpSummary" class="small muted" style="margin-top:10px"></div>
+  </div>
+
   <div class="card" style="overflow:hidden;margin-bottom:14px">
     <div class="row between" style="padding:14px 16px"><h3 style="font-size:18px">매장 목록</h3>
       <span class="badge line" id="storeCount">0곳</span></div>
@@ -68,6 +83,16 @@
 </main>
 
 <div class="sheet-back" id="back"></div>
+
+<!-- 그룹 매장 배정 -->
+<div class="sheet" id="grpSheet" role="dialog" aria-label="그룹 매장">
+  <div class="sheet-head"><h3 id="grpTitle">그룹 매장 배정</h3><button class="x" data-close>✕</button></div>
+  <div class="sheet-body">
+    <p class="small muted">이 그룹에 넣을 매장을 고르세요. 다른 그룹에 있던 매장은 이 그룹으로 옮겨집니다.</p>
+    <div id="grpStores"></div>
+  </div>
+  <div class="sheet-foot"><button class="btn primary" id="grpSave" style="width:100%">저장</button></div>
+</div>
 
 <!-- 매장 추가/수정 -->
 <div class="sheet" id="storeSheet" role="dialog" aria-label="매장 정보">

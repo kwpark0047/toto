@@ -38,7 +38,205 @@
     fillStaff();
     fillTables();
     fillNotify();
+    fillOps();
+    fillPayments();
+    fillEvents();
+    fillCommunity();
+    fillWaiting();
   }
+
+  /* ---------- 온·오프라인 운영 모드 ---------- */
+  function fillOps() {
+    const ch = S.data.channel || {};
+    const labels = S.data.channelLabels || {};
+    $("#chMode").innerHTML = Object.keys(labels).map((k) =>
+      `<option value="${k}"${ch.mode === k ? " selected" : ""}>${esc(labels[k])}</option>`).join("");
+    if (ch.mode) $("#chMode").value = ch.mode;
+    $("#chPickup").checked = !!ch.pickup;
+    $("#chDelivery").checked = !!ch.delivery;
+    $("#chPreorder").checked = !!ch.preorder;
+    $("#chPickupMin").value = ch.pickupMin == null ? 20 : ch.pickupMin;
+    $("#chDeliveryFee").value = ch.deliveryFee == null ? 0 : ch.deliveryFee;
+    $("#chNote").value = ch.onlineNote || "";
+    $("#channelSub").textContent = `${labels[ch.mode] || "오프라인"}` +
+      [ch.pickup ? "포장" : "", ch.delivery ? "배달" : "", ch.preorder ? "사전주문" : ""]
+        .filter(Boolean).map((x) => ` · ${x}`).join("");
+  }
+
+  $("#saveChannel").onclick = () => save({ channel: {
+    mode: $("#chMode").value, pickup: $("#chPickup").checked,
+    delivery: $("#chDelivery").checked, preorder: $("#chPreorder").checked,
+    pickupMin: Number($("#chPickupMin").value || 0),
+    deliveryFee: Number($("#chDeliveryFee").value || 0),
+    onlineNote: $("#chNote").value,
+  } }, "운영 모드");
+
+  /* ---------- 결제 수단 ---------- */
+  function fillPayments() {
+    const p = S.data.payments || {};
+    const cash = p.cash || {}, tr = p.transfer || {}, card = p.card || {}, quick = p.quick || {};
+    $("#payCashNote").value = cash.note || "";
+    $("#payTransferOn").checked = !!tr.enabled;
+    $("#payBank").value = tr.bank || "";
+    $("#payAccountNo").value = tr.accountNo || "";
+    $("#payHolder").value = tr.holder || "";
+    $("#payTransferNote").value = tr.note || "";
+    $("#payCardOn").checked = !!card.enabled;
+    $("#payCardFee").value = card.feeRate == null ? 0 : card.feeRate;
+    $("#payCardProvider").value = card.provider || "none";
+    $("#payCardNote").value = card.note || "";
+    $("#payQuickOn").checked = !!quick.enabled;
+    $("#payQuickFee").value = quick.feeRate == null ? 0 : quick.feeRate;
+    $("#payQuickNote").value = quick.note || "";
+    const on = ["현금", tr.enabled ? "계좌이체" : "", card.enabled ? "카드" : "", quick.enabled ? "간편결제" : ""]
+      .filter(Boolean).join(" · ");
+    $("#paySub").textContent = on;
+    $("#payAdapterNote").textContent = (card.enabled || quick.enabled)
+      ? "카드·간편결제는 PG 키가 없어 모의 승인으로만 기록됩니다(실제 결제 아님)."
+      : "카드·간편결제를 켜면 모의 승인으로 동작합니다(PG 계약 후 실제 연동).";
+  }
+
+  $("#savePay").onclick = () => save({ payments: {
+    cash: { note: $("#payCashNote").value },
+    transfer: { enabled: $("#payTransferOn").checked, bank: $("#payBank").value,
+                accountNo: $("#payAccountNo").value, holder: $("#payHolder").value,
+                note: $("#payTransferNote").value },
+    card: { enabled: $("#payCardOn").checked, feeRate: Number($("#payCardFee").value || 0),
+            provider: $("#payCardProvider").value, note: $("#payCardNote").value },
+    quick: { enabled: $("#payQuickOn").checked, feeRate: Number($("#payQuickFee").value || 0),
+             note: $("#payQuickNote").value },
+  } }, "결제 수단");
+
+  /* ---------- 고객 이벤트·쿠폰 ---------- */
+  function fillEvents() {
+    const e = S.data.events || {};
+    const fv = e.firstVisit || {}, rv = e.revisit || {}, bd = e.birthday || {};
+    const td = e.timeDiscount || {}, cp = e.coupon || {};
+    $("#eventBox").innerHTML = `
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div><b>첫 방문</b><div class="small muted">처음 결제한 손님에게 포인트·쿠폰</div></div>
+        <label class="row" style="gap:6px"><input type="checkbox" data-ev="firstVisit" ${fv.enabled ? "checked" : ""} style="width:20px;height:20px"><span class="small">사용</span></label>
+      </div>
+      <div class="grid2" style="margin:8px 0">
+        <div class="field"><label>첫 방문 포인트</label><input class="input" id="evFirstPoints" type="number" min="0" value="${fv.points || 0}"></div>
+        <div class="field"><label>첫 방문 쿠폰</label><label class="row" style="gap:6px;margin-top:8px"><input type="checkbox" id="evFirstCoupon" ${fv.coupon ? "checked" : ""} style="width:20px;height:20px"><span class="small">쿠폰도 발급</span></label></div>
+      </div>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div><b>재방문</b><div class="small muted">며칠 안에 다시 오면 포인트</div></div>
+        <label class="row" style="gap:6px"><input type="checkbox" data-ev="revisit" ${rv.enabled ? "checked" : ""} style="width:20px;height:20px"><span class="small">사용</span></label>
+      </div>
+      <div class="grid2" style="margin:8px 0">
+        <div class="field"><label>기준(일)</label><input class="input" id="evRevDays" type="number" min="1" max="365" value="${rv.days || 7}"></div>
+        <div class="field"><label>포인트</label><input class="input" id="evRevPoints" type="number" min="0" value="${rv.points || 0}"></div>
+      </div>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div><b>생일</b><div class="small muted">생일 달에 온 손님에게 포인트·쿠폰</div></div>
+        <label class="row" style="gap:6px"><input type="checkbox" data-ev="birthday" ${bd.enabled ? "checked" : ""} style="width:20px;height:20px"><span class="small">사용</span></label>
+      </div>
+      <div class="grid2" style="margin:8px 0">
+        <div class="field"><label>생일 포인트</label><input class="input" id="evBirthPoints" type="number" min="0" value="${bd.points || 0}"></div>
+        <div class="field"><label>생일 쿠폰</label><label class="row" style="gap:6px;margin-top:8px"><input type="checkbox" id="evBirthCoupon" ${bd.coupon ? "checked" : ""} style="width:20px;height:20px"><span class="small">쿠폰도 발급</span></label></div>
+      </div>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div><b>시간 할인</b><div class="small muted">정해진 시간에 주문하면 자동 할인</div></div>
+        <label class="row" style="gap:6px"><input type="checkbox" data-ev="timeDiscount" ${td.enabled ? "checked" : ""} style="width:20px;height:20px"><span class="small">사용</span></label>
+      </div>
+      <div class="grid2" style="margin:8px 0">
+        <div class="field"><label>시작</label><input class="input" id="evTimeStart" value="${esc(td.start || "14:00")}" maxlength="5" placeholder="14:00"></div>
+        <div class="field"><label>끝</label><input class="input" id="evTimeEnd" value="${esc(td.end || "17:00")}" maxlength="5" placeholder="17:00"></div>
+        <div class="field"><label>할인율(%)</label><input class="input" id="evTimePercent" type="number" min="1" max="90" value="${td.percent || 10}"></div>
+      </div>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div><b>쿠폰</b><div class="small muted">발급 조건·금액</div></div>
+        <label class="row" style="gap:6px"><input type="checkbox" data-ev="coupon" ${cp.enabled ? "checked" : ""} style="width:20px;height:20px"><span class="small">사용</span></label>
+      </div>
+      <div class="grid2" style="margin:8px 0">
+        <div class="field"><label>쿠폰 이름</label><input class="input" id="evCouponTitle" maxlength="40" value="${esc(cp.title || "")}"></div>
+        <div class="field"><label>할인 금액(원)</label><input class="input" id="evCouponAmount" type="number" min="0" value="${cp.amount || 0}"></div>
+        <div class="field"><label>최소 주문(원)</label><input class="input" id="evCouponMin" type="number" min="0" value="${cp.minSpend || 0}"></div>
+        <div class="field"><label>유효 기간(일)</label><input class="input" id="evCouponDays" type="number" min="1" max="365" value="${cp.validDays || 30}"></div>
+      </div>`;
+    $("#eventsSub").textContent =
+      [fv.enabled ? "첫 방문" : "", rv.enabled ? "재방문" : "", bd.enabled ? "생일" : "",
+       td.enabled ? "시간 할인" : "", cp.enabled ? "쿠폰" : ""].filter(Boolean).join(" · ") || "모두 꺼짐";
+    loadEventSide();
+  }
+
+  async function loadEventSide() {
+    try {
+      const data = await api("/api/events");
+      const coupons = data.coupons || [];
+      $("#couponBox").innerHTML = coupons.length ? `<table class="table">
+        <thead><tr><th>쿠폰</th><th>금액</th><th>조건</th><th>발급</th><th>사용</th></tr></thead>
+        <tbody>${coupons.map((c) => `<tr><td>${esc(c.title)}</td>
+          <td class="nums">${Number(c.amount || 0).toLocaleString()}원</td>
+          <td class="small">${Number(c.minSpend || 0) ? Number(c.minSpend).toLocaleString() + "원 이상" : "조건 없음"}</td>
+          <td class="nums">${c.issued}</td><td class="nums">${c.used}</td></tr>`).join("")}</tbody></table>`
+        : '<span class="small muted">아직 발급된 쿠폰이 없습니다.</span>';
+      const logs = data.recent || [];
+      $("#eventLog").innerHTML = logs.length ? logs.slice(0, 8).map((l) =>
+        `<div class="row between" style="padding:4px 0;border-bottom:1px solid var(--line)">
+          <span class="small">${esc(l.createdAt.slice(5, 16))} · ${esc(l.title)}</span>
+          <span class="small muted">${esc(l.customer || "")}${l.points ? ` · +${l.points}P` : ""}</span></div>`).join("")
+        : '<span class="small muted">아직 적용된 이벤트가 없습니다.</span>';
+    } catch (e) {
+      $("#couponBox").innerHTML = '<span class="small muted">쿠폰을 불러오지 못했습니다.</span>';
+      $("#eventLog").innerHTML = '<span class="small muted">이벤트 기록을 불러오지 못했습니다.</span>';
+    }
+  }
+
+  const evOn = (key) => {
+    const el = document.querySelector(`#eventBox [data-ev="${key}"]`);
+    return el ? el.checked : false;
+  };
+
+  $("#saveEvents").onclick = () => save({ events: {
+    firstVisit: { enabled: evOn("firstVisit"), points: Number($("#evFirstPoints").value || 0),
+                  coupon: $("#evFirstCoupon").checked },
+    revisit: { enabled: evOn("revisit"), days: Number($("#evRevDays").value || 7),
+               points: Number($("#evRevPoints").value || 0) },
+    birthday: { enabled: evOn("birthday"), points: Number($("#evBirthPoints").value || 0),
+                coupon: $("#evBirthCoupon").checked },
+    timeDiscount: { enabled: evOn("timeDiscount"), start: $("#evTimeStart").value,
+                    end: $("#evTimeEnd").value, percent: Number($("#evTimePercent").value || 10) },
+    coupon: { enabled: evOn("coupon"), title: $("#evCouponTitle").value,
+              amount: Number($("#evCouponAmount").value || 0),
+              minSpend: Number($("#evCouponMin").value || 0),
+              validDays: Number($("#evCouponDays").value || 30) },
+  } }, "고객 이벤트");
+
+  /* ---------- 로컬 커뮤니티 ---------- */
+  function fillCommunity() {
+    const c = S.data.community || {};
+    $("#comOn").checked = !!c.enabled;
+    $("#comShow").checked = !!c.showToCustomers;
+    $("#comJoint").checked = !!c.jointPromo;
+    $("#comNeighborhood").value = c.neighborhood || "";
+    $("#comIntro").value = c.intro || "";
+    $("#communitySub").textContent = c.enabled
+      ? `참여 중 · 손님에게 ${c.showToCustomers ? "보임" : "숨김"}` : "꺼짐(동네 소식·프로모션 올리지 않음)";
+  }
+
+  $("#saveCommunity").onclick = () => save({ community: {
+    enabled: $("#comOn").checked, showToCustomers: $("#comShow").checked,
+    jointPromo: $("#comJoint").checked, neighborhood: $("#comNeighborhood").value,
+    intro: $("#comIntro").value,
+  } }, "로컬 커뮤니티");
+
+  /* ---------- 웨이팅 ---------- */
+  function fillWaiting() {
+    const w = S.data.waiting || {};
+    $("#waitOn").checked = !!w.enabled;
+    $("#waitNotice").value = w.notice || "";
+    $("#waitMaxParty").value = w.maxParty == null ? 8 : w.maxParty;
+    $("#waitingSub").textContent = w.enabled
+      ? `받는 중 · 한 팀 최대 ${w.maxParty}명` : "꺼짐(대기 접수 안 함)";
+  }
+
+  $("#saveWaiting").onclick = () => save({ waiting: {
+    enabled: $("#waitOn").checked, notice: $("#waitNotice").value,
+    maxParty: Number($("#waitMaxParty").value || 8),
+  } }, "웨이팅");
 
   function notifySubText() {
     const ch = S.notify.channels.map((c) => `${c.label} ${c.connected ? "연결" : "미연결"}${c.enabled ? "" : "(꺼짐)"}`);

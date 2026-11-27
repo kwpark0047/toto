@@ -2,7 +2,7 @@
 (() => {
   renderNav("stores");
   const S = { stores: [], comparison: null, summary: null, staff: [], transfers: [],
-              current: 1, editing: null, sourceMenu: null };
+              current: 1, editing: null, sourceMenu: null, groups: [], editingGroup: null };
 
   async function load() {
     const [stores, comparison, summary, staff, transfers] = await Promise.all([
@@ -23,7 +23,100 @@
     renderList();
     renderLog();
     renderCopyOptions();
+    loadGroups();
   }
+
+  /* ---------- 매장 그룹 ---------- */
+  async function loadGroups() {
+    try {
+      const data = await api("/api/groups");
+      S.groups = data.groups || [];
+      S.kinds = data.kinds || [];
+      renderGroups();
+    } catch (e) {
+      $("#groupList").innerHTML = '<span class="small muted">그룹을 불러오지 못했습니다.</span>';
+    }
+  }
+
+  function renderGroups() {
+    $("#grpKind").innerHTML = (S.kinds || []).map((k) =>
+      `<option value="${k.code}">${esc(k.label)}</option>`).join("");
+    const list = S.groups || [];
+    if (!list.length) {
+      $("#groupList").innerHTML = '<span class="small muted">아직 그룹이 없습니다. 아래에서 만들어 보세요.</span>';
+      return;
+    }
+    $("#groupList").innerHTML = list.map((g) => `<div class="row between wrap" style="padding:9px 0;border-bottom:1px solid var(--line);gap:8px">
+      <div><b>${esc(g.name)}</b> <span class="badge">${esc(g.kindLabel)}</span>
+        <div class="small muted">${g.stores.length ? g.stores.map((s) => esc(s.name)).join(" · ") : "매장 없음"}</div></div>
+      <div class="row wrap" style="gap:6px">
+        <button class="btn sm ghost" data-g-assign="${g.id}">매장 배정</button>
+        <button class="btn sm ghost" data-g-sum="${g.id}">통합 매출</button>
+        <button class="btn sm ghost" data-g-apply="${g.id}">설정 적용</button>
+        <button class="btn sm ghost" data-g-del="${g.id}">삭제</button>
+      </div></div>`).join("");
+    $$("#groupList [data-g-assign]").forEach((b) => b.onclick = () => openGroup(Number(b.dataset.gAssign)));
+    $$("#groupList [data-g-sum]").forEach((b) => b.onclick = async () => {
+      try {
+        const r = await api(`/api/groups/${b.dataset.gSum}/summary`);
+        $("#grpSummary").innerHTML = `<b>${esc(r.group.name)}</b> · ${esc(r.date)} 기준<br>` +
+          r.stores.map((s) => `${esc(s.name)}: 오늘 ${won(s.todayPaid)} · 이번 달 ${won(s.monthPaid)}`).join("<br>") +
+          `<br>합계 오늘 ${won(r.totals.todayPaid)} · 이번 달 ${won(r.totals.monthPaid)}`;
+      } catch (e) { toast(e.message, "err"); }
+    });
+    $$("#groupList [data-g-apply]").forEach((b) => b.onclick = async () => {
+      if (!confirm("그룹에 저장된 운영 모드·웨이팅 설정을 모든 그룹 매장에 적용할까요?")) return;
+      try {
+        const r = await api(`/api/groups/${b.dataset.gApply}/apply-settings`, { method: "POST", body: {} });
+        toast(`매장 ${r.applied.length}곳에 적용했습니다`, "ok");
+      } catch (e) { toast(e.message, "err"); }
+    });
+    $$("#groupList [data-g-del]").forEach((b) => b.onclick = async () => {
+      if (!confirm("그룹만 없애고 매장·메뉴·주문은 그대로 둡니다. 계속할까요?")) return;
+      try {
+        await api(`/api/groups/${b.dataset.gDel}`, { method: "DELETE" });
+        toast("그룹을 없앴습니다(매장은 유지)", "ok");
+        await loadGroups();
+      } catch (e) { toast(e.message, "err"); }
+    });
+  }
+
+  function openGroup(id) {
+    S.editingGroup = S.groups.find((g) => g.id === id);
+    const g = S.editingGroup;
+    if (!g) return;
+    $("#grpTitle").textContent = `${g.name} · 매장 배정`;
+    const memberIds = new Set(g.stores.map((s) => s.id));
+    $("#grpStores").innerHTML = S.stores.map((s) => `
+      <label class="row" style="gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <input type="checkbox" data-gstore="${s.id}" ${memberIds.has(s.id) ? "checked" : ""} style="width:20px;height:20px">
+        <span><b>${esc(s.name)}</b> <span class="small muted">${s.active ? "사용" : "사용 안 함"}</span></span>
+      </label>`).join("") || '<span class="small muted">매장이 없습니다.</span>';
+    $("#back").classList.add("on");
+    $("#grpSheet").classList.add("on");
+  }
+
+  $("#grpAdd").onclick = async () => {
+    const name = $("#grpName").value.trim();
+    if (!name) { toast("그룹 이름을 넣어 주세요", "err"); return; }
+    try {
+      await api("/api/groups", { method: "POST", body: { name, kind: $("#grpKind").value } });
+      $("#grpName").value = "";
+      toast(`'${name}' 그룹을 만들었습니다`, "ok");
+      await loadGroups();
+    } catch (e) { toast(e.message, "err"); }
+  };
+
+  $("#grpSave").onclick = async () => {
+    if (!S.editingGroup) return;
+    const ids = $$("#grpStores [data-gstore]").filter((el) => el.checked).map((el) => Number(el.dataset.gstore));
+    try {
+      await api(`/api/groups/${S.editingGroup.id}`, { method: "PATCH", body: { storeIds: ids } });
+      toast("그룹 매장을 저장했습니다", "ok");
+      closeSheet();
+      await loadGroups();
+    } catch (e) { toast(e.message, "err"); }
+  };
 
   function renderSummary() {
     const t = (S.summary && S.summary.totals) || {};
