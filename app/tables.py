@@ -14,6 +14,10 @@ from . import stores, store
 
 DEFAULT_SEATS = 4
 
+# 테이블 조회는 항상 구역 이름을 함께 준다(고객 화면·주방·화면 공통)
+_SELECT = ("SELECT t.*, z.name AS zone_name FROM dining_tables t"
+           " LEFT JOIN table_zones z ON z.id=t.zone_id AND z.store_id=t.store_id")
+
 
 def _row(r):
     keys = r.keys()
@@ -135,7 +139,7 @@ def active_tables():
 def get(table_id):
     """지금 매장의 테이블. 다른 매장 테이블이면 찾을 수 없음."""
     with store.read() as conn:
-        r = conn.execute("SELECT * FROM dining_tables WHERE id=? AND store_id=?",
+        r = conn.execute(_SELECT + " WHERE t.id=? AND t.store_id=?",
                          (table_id, stores.current())).fetchone()
         if not r:
             raise LookupError("테이블을 찾을 수 없습니다")
@@ -145,7 +149,7 @@ def get(table_id):
 def get_any(table_id):
     """매장을 가리지 않고 테이블을 찾는다(공개 주문이 코드/번호로 매장을 알아낼 때)."""
     with store.read() as conn:
-        r = conn.execute("SELECT * FROM dining_tables WHERE id=?", (table_id,)).fetchone()
+        r = conn.execute(_SELECT + " WHERE t.id=?", (table_id,)).fetchone()
         if not r:
             raise LookupError("테이블을 찾을 수 없습니다")
         return _row(r)
@@ -159,10 +163,10 @@ def by_code(code):
     """
     with store.read() as conn:
         r = conn.execute(
-            "SELECT * FROM dining_tables WHERE code=? AND store_id=? ORDER BY id LIMIT 1",
+            _SELECT + " WHERE t.code=? AND t.store_id=? ORDER BY t.id LIMIT 1",
             (str(code), stores.current())).fetchone()
         if not r:
-            rows = conn.execute("SELECT * FROM dining_tables WHERE code=?", (str(code),)).fetchall()
+            rows = conn.execute(_SELECT + " WHERE t.code=?", (str(code),)).fetchall()
             if len(rows) == 1:
                 r = rows[0]
         return _row(r) if r else None
@@ -235,7 +239,7 @@ def create(label, seats=0, active=True, zone_id=None):
 def update(table_id, data):
     ts = store.now()
     with store.tx() as conn:
-        r = conn.execute("SELECT * FROM dining_tables WHERE id=? AND store_id=?",
+        r = conn.execute(_SELECT + " WHERE t.id=? AND t.store_id=?",
                          (table_id, stores.current())).fetchone()
         if not r:
             raise LookupError("테이블을 찾을 수 없습니다")
@@ -291,7 +295,7 @@ def move(table_id, direction="up"):
 
 def delete(table_id):
     with store.tx() as conn:
-        r = conn.execute("SELECT * FROM dining_tables WHERE id=? AND store_id=?",
+        r = conn.execute(_SELECT + " WHERE t.id=? AND t.store_id=?",
                          (table_id, stores.current())).fetchone()
         if not r:
             raise LookupError("테이블을 찾을 수 없습니다")
