@@ -20,6 +20,7 @@ async function api(path, opts = {}) {
     headers: opts.body ? { "Content-Type": "application/json" } : {},
     body: opts.body ? JSON.stringify(opts.body) : undefined,
     credentials: "same-origin",
+    signal: opts.signal,
   });
   if (res.status === 401 && !String(path).startsWith("/api/auth/")) {
     goLogin();

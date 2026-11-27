@@ -41,8 +41,20 @@
   const itemById = (id) => state.items.find((i) => i.id === id);
 
   // ---------------------------------------------------------------- 메뉴
+  // 응답이 없으면 화면이 '불러오는 중'에서 쌓이지 않게 타임아웃을 둔다.
+  async function apiTimeout(path, opts = {}, ms = 15000) {
+    if (typeof AbortController === "undefined") return api(path, opts);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await api(path, { ...opts, signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function loadMenu(first) {
-    const data = await api(`/api/menu?lang=${LANG}`);
+    const data = await apiTimeout(`/api/menu?lang=${LANG}`);
     const prev = JSON.stringify(state.items.map((i) => [i.id, i.soldout, i.price, i.image]));
     state.store = data.store;
     if (data.store) {
@@ -66,6 +78,25 @@
     }
     if (first || changed) renderMenu();
     return changed;
+  }
+
+  // 메뉴를 못 불러왔을 때: 스켈레톤을 닫고 다시 시도 버튼을 보여 준다.
+  function showMenuError(e) {
+    const loading = document.getElementById("menuLoading");
+    if (loading) loading.classList.add("hidden");
+    const msg = e && e.name === "AbortError"
+      ? "메뉴를 불러오는 데 시간이 오래 걸립니다."
+      : (e && e.message) || "메뉴를 불러오지 못했습니다.";
+    $("#menuList").innerHTML = `<div class="card pad" style="text-align:center;margin:16px">
+      <p style="font-weight:800;margin:6px 0">${esc(msg)}</p>
+      <p class="small muted">잠시 뒤 다시 시도하거나 직원에게 말씀해 주세요.</p>
+      <button class="btn primary" id="menuRetry" style="margin-top:8px">다시 시도</button></div>`;
+    const btn = $("#menuRetry");
+    if (btn) btn.onclick = () => {
+      btn.disabled = true;
+      loadMenu(true).then(() => renderCartBar())
+        .catch((err) => { toast(err.message, "err"); btn.disabled = false; });
+    };
   }
 
   function renderTabs() {
@@ -98,6 +129,8 @@
       })
       .join("");
     $("#menuList").innerHTML = html || `<div class="empty"><div class="ico">🍽️</div>준비된 메뉴가 없습니다</div>`;
+    const loading = document.getElementById("menuLoading");
+    if (loading) loading.classList.add("hidden");
     $$("#menuList .add").forEach((btn) =>
       btn.addEventListener("click", () => onAdd(Number(btn.dataset.id)))
     );
@@ -117,14 +150,18 @@
     const img = it.image
       ? `<img src="${esc(it.image)}" alt="${esc(it.name)}" loading="lazy" decoding="async" width="400" height="300">`
       : `<span class="noimg-ico">🍽️</span>`;
+    // 원산지·알레르기·매운맛 중 있는 것만 보여 준다(없으면 '정보 없음'으로 채우지 않는다)
+    const info = [];
+    if (it.origin) info.push(`원산지 ${esc(it.origin)}`);
+    if ((it.allergens || []).length) info.push(`알레르기 ${esc(it.allergens.join(", "))}`);
+    if (it.spice) info.push("🌶".repeat(it.spice));
+    const infoHTML = info.length ? `<div class="info-line">${info.join(" · ")}</div>` : "";
     return `<article class="mcard ${it.soldout ? "out" : ""}">
       <div class="ph ${it.image ? "" : "noimg"}">${img}${hasOpt ? '<span class="opt-tag">옵션 선택</span>' : ""}${it.soldout ? '<div class="soldout">품절</div>' : ""}</div>
       <div class="body">
         <div class="nm">${esc(it.name)}</div>
         <div class="ds">${esc(it.description || "")}</div>
-        <div class="info-line">${it.origin ? `원산지 ${esc(it.origin)}` : '<span class="muted">원산지 정보 없음</span>'}
-          · ${(it.allergens || []).length ? `알레르기 ${esc(it.allergens.join(", "))}` : "알레르기 정보 없음"}
-          ${it.spice ? ` · ${"🌶".repeat(it.spice)}` : ""}</div>
+        ${infoHTML}
         <div class="foot">
           <span class="pr nums">${won(it.price)}</span>
           <div class="row" style="gap:6px">
@@ -632,18 +669,34 @@
   }
 
   // ---------------------------------------------------------------- 시트 제어
+  // 닫힌 시트는 화면 낭독기·키보드 탭에서 빠지게 한다(aria-hidden · inert).
+  function syncSheets() {
+    $$(".sheet").forEach((s) => {
+      const open = s.classList.contains("on");
+      s.setAttribute("aria-hidden", open ? "false" : "true");
+      if (open) s.removeAttribute("inert");
+      else s.setAttribute("inert", "");
+    });
+    const back = $("#back");
+    if (back) back.setAttribute("aria-hidden", back.classList.contains("on") ? "false" : "true");
+  }
+
   function openSheet(id) {
     $("#back").classList.add("on");
     $$(".sheet").forEach((s) => s.classList.remove("on"));
     const el = document.getElementById(id);
     el.classList.add("on");
     el.dataset.open = "1";
+    syncSheets();
   }
   function closeSheets() {
     $("#back").classList.remove("on");
     $$(".sheet").forEach((s) => s.classList.remove("on"));
-    $("#doneSheet").dataset.open = "";
+    const done = $("#doneSheet");
+    if (done) done.dataset.open = "";
+    syncSheets();
   }
+  syncSheets();
   $("#back").addEventListener("click", closeSheets);
   $$("[data-close]").forEach((b) => b.addEventListener("click", closeSheets));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
@@ -798,8 +851,7 @@
   function readItemText(item) {
     const bits = [item.name, `${item.price.toLocaleString()}원`, item.description || ""];
     if (item.origin) bits.push(`원산지 ${item.origin}`);
-    bits.push(item.allergens && item.allergens.length
-      ? `알레르기: ${item.allergens.join(", ")}` : "알레르기 정보 없음");
+    if (item.allergens && item.allergens.length) bits.push(`알레르기: ${item.allergens.join(", ")}`);
     if (item.spice) bits.push(`매운맛 ${item.spice}단계`);
     if (item.options && item.options.length) {
       bits.push(item.options.map((g) => `${g.name}: ${g.options ? g.choices.join(", ") : g.choices.join(", ")}`).join(". "));
@@ -1158,14 +1210,23 @@
     } catch (e) {
       return;   // 비활성·없는 테이블은 안내 화면만 보여 준다
     }
-    await loadMenu(true);
+    try {
+      await loadMenu(true);
+    } catch (e) {
+      showMenuError(e);
+    }
     renderCartBar();
     await loadOrders();
     loadCall();
     loadCommunity();
     pollEvery(async () => {
       await refreshCurrent();
-      const changed = await loadMenu(false);
+      let changed = false;
+      try {
+        changed = await loadMenu(false);
+      } catch (e) {
+        return;   // 잠시 통신이 끊겨도 화면을 지우지 않는다(다음 차례에 다시 시도)
+      }
       if (changed) renderCartSheet();
       await loadOrders();
       await loadCall();

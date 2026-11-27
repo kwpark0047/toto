@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>맛집 · 테이블 주문</title>
-<link rel="stylesheet" href="/assets/base.css">
-<link rel="stylesheet" href="/assets/customer.css">
+<link rel="stylesheet" href="/assets/base.css?v=20261127b">
+<link rel="stylesheet" href="/assets/customer.css?v=20261127b">
 </head>
 <body class="cust">
 <header class="cust-head">
@@ -70,7 +70,12 @@
     <div id="featuredWrap"></div>
     <div id="trackWrap"></div>
     <nav class="ctabs" id="tabs" aria-label="메뉴 카테고리"></nav>
-    <div id="menuList" class="menu-list"></div>
+    <div id="menuList" class="menu-list" aria-live="polite"><div class="menu-skel" aria-hidden="true">
+      <div class="mcard skel"><div class="ph skel-ph"></div><div class="body"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div></div>
+      <div class="mcard skel"><div class="ph skel-ph"></div><div class="body"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div></div>
+      <div class="mcard skel"><div class="ph skel-ph"></div><div class="body"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div></div>
+      <div class="mcard skel"><div class="ph skel-ph"></div><div class="body"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div></div>
+    </div><p class="small muted" style="text-align:center;padding:6px 16px" id="menuLoading">메뉴를 불러오는 중…</p></div>
     <div id="communityWrap"></div>
     <p class="demo-note">시제품 화면입니다 · 결제는 매장에서 확인합니다</p>
   </section>
@@ -104,7 +109,7 @@
 <div class="sheet-back" id="back"></div>
 
 <!-- 장바구니 -->
-<div class="sheet" id="cartSheet" role="dialog" aria-label="장바구니">
+<div class="sheet" id="cartSheet" role="dialog" aria-modal="true" aria-label="장바구니" aria-hidden="true" inert>
   <div class="sheet-head">
     <h3>장바구니</h3>
     <button class="x" data-close>✕</button>
@@ -120,7 +125,7 @@
 </div>
 
 <!-- 주문서(현금 결제) -->
-<div class="sheet" id="checkoutSheet" role="dialog" aria-label="주문서">
+<div class="sheet" id="checkoutSheet" role="dialog" aria-modal="true" aria-label="주문서" aria-hidden="true" inert>
   <div class="sheet-head">
     <button class="x" data-close>✕</button>
     <h3>주문서</h3>
@@ -182,22 +187,6 @@
         </div>
       </div>
     </div>
-    <div class="field">
-      <label>결제 방법</label>
-      <div class="pay-box">
-        <div class="pay-opt on">
-          <span class="pay-ico">💵</span>
-          <span class="grow"><b>현금 결제</b><span class="muted small">계산대에서 결제</span></span>
-          <span class="badge green">선택됨</span>
-        </div>
-        <div class="pay-opt off">
-          <span class="pay-ico">💳</span>
-          <span class="grow"><b>카드 · 간편결제</b><span class="muted small">추후 연동 예정</span></span>
-          <span class="badge line">준비중</span>
-        </div>
-      </div>
-      <p class="small muted" style="margin:8px 2px 0">주문은 결제 전 상태로 접수되고, 사장님이 계산대에서 현금을 받은 뒤 결제 완료로 바뀝니다.</p>
-    </div>
   </div>
   <div class="sheet-foot">
     <button class="btn primary lg block" id="submitOrder">주문 완료 · <span class="nums" id="ckTotal">0원</span></button>
@@ -205,7 +194,7 @@
 </div>
 
 <!-- 옵션 선택 -->
-<div class="sheet" id="optionSheet" role="dialog" aria-label="옵션 선택">
+<div class="sheet" id="optionSheet" role="dialog" aria-modal="true" aria-label="옵션 선택" aria-hidden="true" inert>
   <div class="sheet-head">
     <button class="x" data-close>✕</button>
     <h3 id="optTitle">옵션 선택</h3>
@@ -217,7 +206,7 @@
 </div>
 
 <!-- 주문 완료 / 진행 상황 -->
-<div class="sheet" id="doneSheet" role="dialog" aria-label="주문 접수">
+<div class="sheet" id="doneSheet" role="dialog" aria-modal="true" aria-label="주문 접수" aria-hidden="true" inert>
   <div class="sheet-head">
     <h3>주문 접수</h3>
     <button class="x" data-close>✕</button>
@@ -229,7 +218,7 @@
 </div>
 
 <!-- 음성 주문 -->
-<div class="sheet" id="voiceSheet" role="dialog" aria-label="말로 주문">
+<div class="sheet" id="voiceSheet" role="dialog" aria-modal="true" aria-label="말로 주문" aria-hidden="true" inert>
   <div class="sheet-head">
     <h3>말로 주문</h3>
     <button class="x" data-close>✕</button>
@@ -251,7 +240,7 @@
   </div>
 </div>
 
-<script src="/assets/util.js"></script>
-<script src="/assets/customer.js"></script>
+<script src="/assets/util.js?v=20261127b"></script>
+<script src="/assets/customer.js?v=20261127b"></script>
 </body>
 </html>

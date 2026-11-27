@@ -48,8 +48,16 @@ function __mk(id) {
 globalThis.document = {
   getElementById(id) { return __els[id] || (__els[id] = __mk(id)); },
   querySelector(sel) {
-    const id = String(sel).startsWith("#") ? String(sel).slice(1) : String(sel);
-    return __els[id] || (__els[id] = __mk(id));
+    // 브라우저처럼 '#id' 는 id 로, '# 없는 이름'은 태그 선택자로 본다(실제로는 null).
+    // 그 밖의 선택자([data-...]·.class·후손 선택자)는 흰 화면을 만들지 않도록 더미를 준다.
+    const s = String(sel).trim();
+    if (/^#[\w-]+$/.test(s)) {
+      const id = s.slice(1);
+      return __els[id] || (__els[id] = __mk(id));
+    }
+    if (/^[A-Za-z][\w-]*$/.test(s)) return null;
+    const key = "sel:" + s;
+    return __els[key] || (__els[key] = __mk(key));
   },
   querySelectorAll() { return []; },
   createElement(tag) { return __mk("el:" + tag); },
@@ -199,6 +207,12 @@ def run(page_js, data, checks, path="/t/3", extra_setup=""):
 def main():
     login()
     me = client.get("/api/auth/me")
+    # 최고관리자 화면 점검용: 테스트 계정이 최고관리자 이메일을 등록하게 한다(임시 DB).
+    if not (me.get("user") or {}).get("isSuperAdmin"):
+        client.call("PATCH", "/api/account", {"email": "kwpark0047@gmail.com"})
+        me = client.get("/api/auth/me")
+        if not (me.get("user") or {}).get("isSuperAdmin"):
+            raise SystemExit("최고관리자 점검 준비 실패 — 원래 사업자 계정인지 확인해 주세요")
     menu = client.get("/api/menu")
     menu_all = client.get("/api/menu/all")
     state = client.get("/api/state")
@@ -226,6 +240,10 @@ def main():
     sessions = client.get("/api/account/sessions")
     staff_meta = client.get("/api/staff/permissions")
     schedule = client.get("/api/schedule")
+    sa_overview = client.get("/api/super-admin/overview")
+    sa_entities = client.get("/api/super-admin/entities")
+    sa_orders = client.get("/api/super-admin/orders")
+    sa_posts = client.get("/api/super-admin/community")
 
     results = []
 
@@ -366,11 +384,43 @@ def main():
                                       ("comState", ["커뮤니티"], []),
                                       ("comCount", ["글"], [])], path="/community")))
 
+    results.append(("최고관리자 대시보드", run("super-admin.js", {
+        "/api/auth/me": me, "/api/super-admin/overview": sa_overview,
+        "/api/super-admin/entities": sa_entities, "/api/super-admin/orders": sa_orders,
+        "/api/super-admin/community": sa_posts,
+    }, [("whoBadge", ["최고관리자"], ["undefined"]),
+        ("kpi", ["사업자 계정", "매장", "누적 매출"], ["undefined", "NaN"]),
+        ("kpi2", ["결제수단별 합계", "QR / NFC 스캔", "로컬 커뮤니티 글"], ["undefined", "NaN"]),
+        ("entCount", ["계정", "매장"], ["undefined"]),
+        ("entityList", ["계정", "매장"], ["undefined", "NaN"]),
+        ("auditList", [], ["undefined"])], path="/super-admin")))
+
     results.append(("포장 주문(/online)", run("online.js",
                                            {"/api/menu": menu,
                                             "/api/payments/methods": client.get("/api/payments/methods")},
                                            [("onMenu", ["김밥"], ["undefined"]),
                                             ("onName", ["맛집"], [])], path="/online")))
+
+    # 운영 모드가 '온라인(포장)'인 매장: 매장 정보를 먼저 받아 바로 메뉴를 그린다.
+    online_open = {"store": {"name": "맛집", "tagline": "", "address": "", "phone": "",
+                             "channel": {"mode": "both", "pickup": True, "delivery": False,
+                                         "preorder": True, "pickupMin": 15, "deliveryFee": 0,
+                                         "onlineNote": "포장은 15분쯤 걸립니다"},
+                             "payments": {}, "waiting": {}, "community": {}},
+                   "serverTime": "", "today": "", "statusLabels": {}, "paymentLabels": {}}
+    results.append(("포장 주문(온라인 열림)", run("online.js",
+        {"/api/auth/me": me, "/api/store": online_open, "/api/menu": menu,
+         "/api/payments/methods": client.get("/api/payments/methods")},
+        [("onMenu", ["김밥", "원"], ["undefined"]),
+         ("onLine", ["포장"], ["undefined"]),
+         ("onName", ["맛집"], [])], path="/online")))
+    # 운영 모드가 오프라인이면 메뉴를 부르지 않고 안내를 바로 띄운다.
+    online_closed = json.loads(json.dumps(online_open))
+    online_closed["store"]["channel"].update({"mode": "offline", "pickup": False, "delivery": False})
+    results.append(("포장 주문(온라인 닫힘)", run("online.js",
+        {"/api/auth/me": me, "/api/store": online_closed, "/api/menu": menu,
+         "/api/payments/methods": client.get("/api/payments/methods")},
+        [("onClosed", ["받지 않습니다"], ["undefined"])], path="/online")))
 
     print()
     for name, ok in results:

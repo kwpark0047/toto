@@ -43,7 +43,9 @@ PROVIDERS = {
         "authorize": "https://kauth.kakao.com/oauth/authorize",
         "token": "https://kauth.kakao.com/oauth/token",
         "profile": "https://kapi.kakao.com/v2/user/me",
-        "scope": "profile_nickname account_email",
+        # 카카오계정 이메일(account_email)은 비즈 앱 전환(사업자 정보) 후에만 쓸 수 있어
+        # 닉네임만 요청한다. 프로필 파싱은 이메일이 없어도 그대로 동작한다.
+        "scope": "profile_nickname",
     },
 }
 
@@ -222,12 +224,15 @@ def fetch_profile(name, access_token):
         subject = payload.get("sub") or ""
         email = payload.get("email") or ""
         nickname = payload.get("name") or (email.split("@")[0] if email else "")
+        # 구글은 이메일 소유를 확인해 주면 email_verified=true 를 준다(최고관리자 판단 근거)
+        verified = payload.get("email_verified") is True
     else:  # kakao
         subject = payload.get("id") or ""
         account = payload.get("kakao_account") or {}
         profile = account.get("profile") or {}
         email = account.get("email") or ""
         nickname = profile.get("nickname") or ""
+        verified = False
     if not subject:
         raise OAuthError("profile")
     return {
@@ -235,6 +240,7 @@ def fetch_profile(name, access_token):
         "subject": str(subject),
         "email": str(email)[:120],
         "name": (str(nickname).strip() or "사장님")[:40],
+        "verified": bool(verified),
     }
 
 
@@ -290,19 +296,43 @@ def login_with_profile(profile, provider, ip="", user_agent="", store_name=""):
     이미 연결된 계정이면 로그인하고, 처음이면 자기 매장을 가진 사업자 계정을 새로 만든다.
     배포 하나에 여러 사업자가 가입할 수 있으므로 다른 사장님이 있어도 막지 않는다.
     (새 계정은 자기 매장만 보이고, 다른 매장 데이터는 보이지 않는다.)
+
+    제공자가 확인해 준 이메일이 최고관리자 이메일이면 그 계정에 최고관리자 권한을 준다.
     """
+    from . import super_admin
     staff_id = linked_staff_id(provider, profile["subject"])
+    link_email = False
+    if not staff_id and profile.get("email") and profile.get("verified"):
+        # 제공자가 확인해 준 이메일이 이미 이 배포의 사업자 계정과 같으면 그 계정으로 로그인한다
+        email = (profile["email"] or "").strip().lower()
+        with store.read() as conn:
+            row = conn.execute("SELECT id FROM staff WHERE lower(email)=? AND role='admin'",
+                               (email,)).fetchone() if email else None
+        if row:
+            staff_id = row["id"]
+            link_email = True
     if staff_id:
         user, token, expires = auth.login_staff(staff_id, ip, user_agent)
-        _touch(provider, profile["subject"])
-        return user, token, expires, False
-
-    username = _free_username(provider, profile["subject"])
-    user, token, expires, _ = staff.signup(
-        (store_name or "").strip() or _store_name(profile),
-        username,
-        secrets.token_urlsafe(18),
-        table_count=config.STORE.get("tables", 8),
-    )
-    _link(user["id"], profile)
-    return user, token, expires, True
+        if link_email:
+            _link(staff_id, profile)
+        else:
+            _touch(provider, profile["subject"])
+        created = False
+    else:
+        username = _free_username(provider, profile["subject"])
+        user, token, expires, _ = staff.signup(
+            (store_name or "").strip() or _store_name(profile),
+            username,
+            secrets.token_urlsafe(18),
+            table_count=config.STORE.get("tables", 8),
+        )
+        _link(user["id"], profile)
+        created = True
+    if profile.get("email"):
+        granted = super_admin.grant_verified_email(
+            user["id"], profile["email"], verified=bool(profile.get("verified")))
+        if granted or not user.get("isSuperAdmin"):
+            fresh = auth.user_for_token(token)
+            if fresh:
+                user = fresh
+    return user, token, expires, created

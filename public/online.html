@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>맛집 · 포장 주문</title>
-<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/base.css?v=20261127b">
 <style>
   body.online { background: var(--bg); }
   .on-wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 120px; }
@@ -23,6 +23,17 @@
   .on-cart .inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
   .qtybox { display: flex; align-items: center; gap: 6px; }
   .qtybox button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 900; }
+  .qtybox button[disabled] { opacity: .4; }
+  /* 로딩 스켈레톤 — 메뉴가 오기 전에 빈 화면 대신 메뉴 모양을 보여 준다 */
+  .on-skel { display: flex; flex-direction: column; }
+  .sk-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .sk-th { width: 68px; height: 68px; border-radius: 10px; background: #e8edf4; flex: none; animation: skp 1.2s ease-in-out infinite; }
+  .sk-lines { flex: 1; min-width: 0; }
+  .sk-line { height: 11px; border-radius: 6px; background: #e8edf4; margin: 7px 0; animation: skp 1.2s ease-in-out infinite; }
+  .sk-line.w60 { width: 60%; } .sk-line.w90 { width: 90%; } .sk-line.w30 { width: 30%; }
+  .sk-btn { width: 36px; height: 30px; border-radius: 8px; background: #eef2f7; flex: none; }
+  @keyframes skp { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .sk-th, .sk-line { animation: none; } }
 </style>
 </head>
 <body class="online">
@@ -39,7 +50,11 @@
 
   <div id="onClosed" class="alert hidden">이 매장은 지금 온라인 주문(포장·배달)을 받지 않습니다. 매장 테이블 QR로 주문해 주세요.</div>
   <div class="on-tabs" id="onTabs"></div>
-  <div id="onMenu">불러오는 중…</div>
+  <div id="onMenu" aria-live="polite"><div class="on-skel" aria-hidden="true">
+    <div class="sk-row"><div class="sk-th"></div><div class="sk-lines"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div><div class="sk-btn"></div></div>
+    <div class="sk-row"><div class="sk-th"></div><div class="sk-lines"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div><div class="sk-btn"></div></div>
+    <div class="sk-row"><div class="sk-th"></div><div class="sk-lines"><div class="sk-line w60"></div><div class="sk-line w90"></div><div class="sk-line w30"></div></div><div class="sk-btn"></div></div>
+  </div><p class="small muted" style="text-align:center">메뉴를 불러오는 중…</p>
   <div class="small muted" id="onNote" style="margin-top:12px"></div>
 </div>
 
@@ -51,7 +66,7 @@
 </div>
 
 <div class="sheet-back" id="back"></div>
-<div class="sheet" id="onSheet" role="dialog" aria-label="주문서">
+<div class="sheet" id="onSheet" role="dialog" aria-modal="true" aria-label="주문서" aria-hidden="true" inert>
   <div class="sheet-head"><h3>주문서</h3><button class="x" data-close>✕</button></div>
   <div class="sheet-body">
     <div id="onSummary" class="small"></div>
@@ -72,7 +87,7 @@
   <div class="sheet-foot"><button class="btn primary" id="onSubmit" style="width:100%">주문하기</button></div>
 </div>
 
-<script src="/assets/util.js"></script>
-<script src="/assets/online.js"></script>
+<script src="/assets/util.js?v=20261127b"></script>
+<script src="/assets/online.js?v=20261127b"></script>
 </body>
 </html>

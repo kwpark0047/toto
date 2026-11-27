@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>맛집 · 사업자 계정 만들기</title>
-<link rel="stylesheet" href="/assets/base.css">
-<link rel="stylesheet" href="/assets/auth.css">
-<link rel="stylesheet" href="/assets/portal.css">
+<link rel="stylesheet" href="/assets/base.css?v=20261127b">
+<link rel="stylesheet" href="/assets/auth.css?v=20261127b">
+<link rel="stylesheet" href="/assets/portal.css?v=20261127b">
 </head>
 <body class="auth">
 <header class="site-nav">
@@ -113,6 +113,12 @@
             <p class="help">영문·숫자·점(.)·밑줄(_)만 쓸 수 있습니다.</p>
           </div>
           <div class="field">
+            <label for="email">이메일 <span class="small muted" style="font-weight:400">(선택)</span></label>
+            <input class="input" id="email" type="email" inputmode="email" autocomplete="email"
+                   placeholder="name@example.com">
+            <p class="help">플랫폼 운영자 계정을 알아보는 데만 씁니다. 손님에게는 공개되지 않습니다.</p>
+          </div>
+          <div class="field">
             <label for="password">비밀번호</label>
             <div class="pw-wrap">
               <input class="input" id="password" type="password" autocomplete="new-password" placeholder="4자 이상">
@@ -130,7 +136,7 @@
           <button class="btn primary block lg" id="nextBtn" type="button">다음</button>
           <div class="msg" id="msg" role="alert" aria-live="polite"></div>
           <ul class="notes">
-            <li>· 이메일·사업자등록번호·주소는 지금 묻지 않습니다.</li>
+            <li>· 사업자등록번호·주소는 지금 묻지 않습니다.</li>
             <li>· 직원·테이블·매장 정보는 로그인 후 '설정'에서 추가할 수 있습니다.</li>
           </ul>
         </section>
@@ -164,8 +170,8 @@
     </p>
   </section>
 </main>
-<script src="/assets/util.js"></script>
-<script src="/assets/portal.js"></script>
-<script src="/assets/signup.js"></script>
+<script src="/assets/util.js?v=20261127b"></script>
+<script src="/assets/portal.js?v=20261127b"></script>
+<script src="/assets/signup.js?v=20261127b"></script>
 </body>
 </html>

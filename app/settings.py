@@ -95,11 +95,9 @@ def _row_value(raw):
     return data if isinstance(data, dict) else {}
 
 
-def get():
-    """저장된 설정 + 기본값(지금 매장)."""
-    with store.read() as conn:
-        row = conn.execute("SELECT value FROM settings WHERE key=?", (_key(),)).fetchone()
-    data = _row_value(row["value"] if row else "")
+def _merged(raw=""):
+    """저장된 JSON + 기본값을 합진 설정 사전."""
+    data = _row_value(raw)
     out = dict(DEFAULTS)
     out.update({k: v for k, v in data.items() if v is not None})
     if not isinstance(out.get("grades"), list) or not out["grades"]:
@@ -107,9 +105,20 @@ def get():
     return out
 
 
-def public():
+def get(conn=None):
+    """저장된 설정 + 기본값(지금 매장). conn 을 주면 그 연결로 읽는다(왕복 절약)."""
+    sql = "SELECT value FROM settings WHERE key=?"
+    if conn is not None:
+        row = conn.execute(sql, (_key(),)).fetchone()
+    else:
+        with store.read() as c:
+            row = c.execute(sql, (_key(),)).fetchone()
+    return _merged(row["value"] if row else "")
+
+
+def public(conn=None, merged=None):
     """고객 화면·QR·영수증에 보여 줄 값. 빈 값은 빈 문자열 그대로 두고 화면이 감춘다."""
-    s = get()
+    s = merged if merged is not None else get(conn)
     ch = s["channel"]
     pays = s["payments"]
     return {
@@ -172,9 +181,10 @@ def offline_on():
     return channel()["mode"] in ("offline", "both")
 
 
-def points_rate():
+def points_rate(conn=None, merged=None):
     try:
-        return max(0.0, min(10.0, float(get()["pointsRate"])))
+        value = (merged if merged is not None else get(conn))["pointsRate"]
+        return max(0.0, min(10.0, float(value)))
     except (TypeError, ValueError):
         return config.POINTS_RATE
 
@@ -512,14 +522,32 @@ def profile_empty():
 
 def summary_for_admin():
     s = get()
+    pays = s["payments"]
+    # 손님 화면에 실제로 나가는 결제수단과, 켰지만 빠진 조건을 함께 알려 준다.
+    available, issues = [], {}
+    if pays.get("cash", {}).get("enabled", True):
+        available.append("CASH")
+    tr = pays.get("transfer", {})
+    if tr.get("enabled"):
+        if tr.get("bank") and tr.get("accountNo"):
+            available.append("TRANSFER")
+        else:
+            issues["transfer"] = "계좌이체를 켰지만 은행·계좌번호가 비어 있어 손님 화면에 나오지 않습니다."
+    for code, key in (("CARD", "card"), ("PAY", "quick")):
+        if pays.get(key, {}).get("enabled"):
+            available.append(code)
+    if not pays.get("cash", {}).get("enabled", True):
+        issues["cash"] = "현금 결제는 항상 켜져 있습니다(끕 수 없음)."
     return {
-        "store": public(),
-        "pointsRate": points_rate(),
+        "store": public(merged=s),
+        "pointsRate": points_rate(merged=s),
         "grades": grades(),
         "baseGrade": base_grade(),
         "profileEmpty": profile_empty(),
         "channel": s["channel"],
-        "payments": s["payments"],
+        "payments": pays,
+        "paymentsAvailable": available,
+        "paymentIssues": issues,
         "waiting": s["waiting"],
         "events": s["events"],
         "community": s["community"],

@@ -453,6 +453,15 @@ CREATE TABLE IF NOT EXISTS visit_events (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_visit_events ON visit_events(store_id, created_at);
+CREATE TABLE IF NOT EXISTS super_admin_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  staff_id INTEGER NOT NULL DEFAULT 0,
+  action TEXT NOT NULL,
+  target TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_super_admin_log ON super_admin_log(id);
 """
 
 SEED_CATEGORIES = ["분식", "한식", "사이드", "음료"]
@@ -1029,6 +1038,9 @@ _ADDED_COLUMNS = [
     ("menu_items", "featured_note", "TEXT NOT NULL DEFAULT ''"),
     ("menu_items", "i18n", "TEXT NOT NULL DEFAULT '{}'"),
     ("waiting_tickets", "purged", "INTEGER NOT NULL DEFAULT 0"),
+    # 최고관리자 — 이메일로 사업자 계정을 식별하고, 플래그는 서버만 켠다
+    ("staff", "email", "TEXT NOT NULL DEFAULT ''"),
+    ("staff", "is_super_admin", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 
@@ -1082,6 +1094,13 @@ def _migrate(conn):
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_store_phone"
         " ON customers(store_id, phone) WHERE phone <> ''")
+    # 한 이메일은 한 계정만 쓴다(최고관리자 이메일을 먼저 선점하는 것을 막는다)
+    try:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_email"
+            " ON staff(email) WHERE email <> ''")
+    except Exception:
+        conn.rollback()
     _ensure_stores(conn)
     _migrate_accounts(conn)
     _ensure_zones(conn)

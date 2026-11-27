@@ -16,8 +16,8 @@ from urllib.parse import parse_qs
 
 from . import (auth, backup, catalog, community, config, customers, events, groups, inventory,
                kitchen, notifier, oauth, orders, payments, portal, reservations, reviews, qrs,
-               recommend, service, settings, staff, stand, stats, stores, store, tables,
-               visits, voice_order, waiting)
+               recommend, service, settings, staff, stand, stats, stores, store, super_admin,
+               tables, visits, voice_order, waiting)
 
 JSON = "application/json; charset=utf-8"
 
@@ -46,11 +46,12 @@ def _query(parsed_query):
 ROUTES = []
 
 
-def route(method, pattern, roles=None, perm=None, login=False):
-    """perm=권한키(또는 키 목록 중 하나), login=True(로그인만), roles=역할 집합(옛 방식)."""
+def route(method, pattern, roles=None, perm=None, login=False, super_only=False):
+    """perm=권한키(또는 키 목록 중 하나), login=True(로그인만), roles=역할 집합(옛 방식),
+    super_only=True(최고관리자만 — 비로그인 401, 일반 계정 403)."""
     def wrap(fn):
         ROUTES.append((method, re.compile("^" + pattern + "$"), fn,
-                       {"roles": roles, "perm": perm, "login": login}))
+                       {"roles": roles, "perm": perm, "login": login, "super": super_only}))
         return fn
     return wrap
 
@@ -70,7 +71,8 @@ def api_login(ctx):
 def api_signup(ctx):
     b = ctx["body"]
     user, token, expires, _ = staff.signup(
-        b.get("storeName"), b.get("username"), b.get("password"), b.get("tables"))
+        b.get("storeName"), b.get("username"), b.get("password"), b.get("tables"),
+        email=b.get("email"))
     return json_response(_session_data(user), 201,
                          {"Set-Cookie": auth.cookie_header(token, config.SESSION_HOURS * 3600)})
 
@@ -95,7 +97,16 @@ def api_me(ctx):
         data["storeId"] = user.get("storeId") or 1
         data["groups"] = groups.list_groups()["groups"]
         data["canSwitchStore"] = user.get("role") == "admin"
+        data["superAdminHint"] = _super_admin_hint(user)
     return json_response(data)
+
+
+def _super_admin_hint(user):
+    """내 계정 화면 안내 — 이 계정이 최고관리자 이메일을 등록할 수 있는지."""
+    is_super = super_admin.is_super(user)
+    eligible = bool(user) and user.get("role") == "admin" and not is_super and \
+        super_admin.claim_allowed(config.SUPER_ADMIN_EMAIL, user.get("accountId"))
+    return {"email": config.SUPER_ADMIN_EMAIL, "isSuper": is_super, "eligible": eligible}
 
 
 def _redirect(location, cookies=None, status=302):
@@ -168,7 +179,8 @@ def _session_data(user):
             "canSwitchStore": bool(user) and user.get("role") == "admin",
             "groups": my_groups,
             "permissionCatalog": [{"code": c, "label": l, "desc": d} for c, l, d in config.PERMISSIONS],
-            "roleLabels": config.ROLE_LABELS, "roleHints": config.ROLE_HINTS}
+            "roleLabels": config.ROLE_LABELS, "roleHints": config.ROLE_HINTS,
+            "superAdminHint": _super_admin_hint(user)}
     return data
 
 
@@ -204,9 +216,16 @@ def api_account_update(ctx):
         data["username"] = ctx["body"].get("username")
     if "name" in ctx["body"] and ctx["user"]["role"] == "admin":
         data["name"] = ctx["body"].get("name")
-    if not data:
-        return json_response({"ok": True})
-    return json_response({"user": staff.update(ctx["user"]["id"], data, actor=ctx["user"])})
+    result = {"ok": True}
+    if data:
+        result["user"] = staff.update(ctx["user"]["id"], data, actor=ctx["user"])
+    if "email" in ctx["body"]:
+        # 이메일은 최고관리자(플랫폼 운영자) 계정을 알아보는 데만 쓴다.
+        result.update(super_admin.set_account_email(ctx["user"], ctx["body"].get("email")))
+        fresh = auth.user_for_token(ctx["token"])
+        if fresh:
+            result["user"] = fresh
+    return json_response(result)
 
 
 @route("GET", r"/api/account/sessions", login=True)
@@ -326,7 +345,17 @@ def api_menu(ctx):
 
 
 def _menu_payload(ctx):
-    data = catalog.customer_menu()
+    # 카테고리·메뉴·추천·설정·rev 를 한 번의 DB 왕복으로 모은다(모바일 첫 화면 지연 줄이기).
+    with store.read() as conn:
+        cur_conf = conn.execute("SELECT value FROM settings WHERE key=?", (settings._key(),))
+        cur_rev = conn.execute("SELECT value FROM meta WHERE key='rev'")
+        data = catalog.customer_bundle(conn=conn)
+        conf_row = cur_conf.fetchone()
+        rev_row = cur_rev.fetchone()
+    merged = settings._merged(conf_row["value"] if conf_row else "")
+    data["store"] = settings.public(merged=merged)
+    data["rev"] = int(rev_row["value"]) if rev_row else 0
+    data["pointsRate"] = settings.points_rate(merged=merged)
     lang = (ctx["query"].get("lang") or "").lower()
     if lang in catalog.LANGS:
         for it in data["items"]:
@@ -335,10 +364,13 @@ def _menu_payload(ctx):
                 it["name"] = tr.get("name") or it["name"]
                 it["description"] = tr.get("description") or it["description"]
             it["nameOriginal"] = it.get("nameOriginal") or it["name"]
-    data["store"] = settings.public()
-    data["rev"] = store.rev()
-    data["pointsRate"] = settings.points_rate()
-    data["featured"] = catalog.featured()
+    featured = data.get("featured") or {}
+    if lang in catalog.LANGS:
+        for it in featured.get("items") or []:
+            tr = (it.get("i18n") or {}).get(lang)
+            if tr:
+                it["name"] = tr.get("name") or it["name"]
+                it["description"] = tr.get("description") or it["description"]
     return json_response(data)
 
 
@@ -1712,6 +1744,63 @@ def api_public_community(ctx):
     return json_response(community.public(sid))
 
 
+# ---------------------------------------------------------------- 최고관리자(플랫폼 운영)
+# 비로그인 401, 일반 사업자·직원 계정 403. 최고관리자만 전체 현황을 읽고,
+# 매장 공개 여부와 커뮤니티 글 공개/숨김만 바꿀 수 있다.
+
+@route("GET", r"/api/super-admin/overview", super_only=True)
+def api_super_overview(ctx):
+    data = super_admin.overview(ctx["query"].get("date"))
+    data["me"] = {"id": ctx["user"]["id"], "username": ctx["user"]["username"],
+                  "email": ctx["user"].get("email")}
+    return json_response(data)
+
+
+@route("GET", r"/api/super-admin/entities", super_only=True)
+def api_super_entities(ctx):
+    q = ctx["query"]
+    return json_response(super_admin.entities(q.get("q") or "", q.get("kind") or "all",
+                                              q.get("state") or "all"))
+
+
+@route("GET", r"/api/super-admin/orders", super_only=True)
+def api_super_orders(ctx):
+    q = ctx["query"]
+    return json_response(super_admin.recent_orders(q.get("limit") or 50, q.get("q") or "",
+                                                   q.get("payment") or "all"))
+
+
+@route("GET", r"/api/super-admin/community", super_only=True)
+def api_super_community(ctx):
+    q = ctx["query"]
+    return json_response(super_admin.posts(q.get("limit") or 50, q.get("q") or "",
+                                           q.get("state") or "all"))
+
+
+@route("PATCH", r"/api/super-admin/stores/(?P<id>\d+)", super_only=True)
+def api_super_store_update(ctx):
+    body = ctx["body"] or {}
+    unknown = [k for k in body if k not in ("listed",)]
+    if unknown:
+        raise ValueError("최고관리자는 매장 공개 여부만 바꿀 수 있습니다")
+    if "listed" not in body:
+        raise ValueError("공개 여부를 정해 주세요")
+    return json_response(super_admin.set_store_listed(ctx["match"]["id"], body.get("listed"),
+                                                      actor=ctx["user"]))
+
+
+@route("PATCH", r"/api/super-admin/community/(?P<id>\d+)", super_only=True)
+def api_super_post_update(ctx):
+    body = ctx["body"] or {}
+    unknown = [k for k in body if k not in ("visible",)]
+    if unknown:
+        raise ValueError("최고관리자는 글 공개/숨김만 바꿀 수 있습니다")
+    if "visible" not in body:
+        raise ValueError("공개 여부를 정해 주세요")
+    return json_response(super_admin.set_post_visible(ctx["match"]["id"], body.get("visible"),
+                                                      actor=ctx["user"]))
+
+
 # ---------------------------------------------------------------- 디스패치
 
 def handle(method, path, query, body, base, host, user=None, token=None, ip="", ua="", cookies=""):
@@ -1735,6 +1824,11 @@ def _dispatch(method, path, query, body, base, host, user, token, ip, ua, cookie
         if not mm:
             continue
         roles, perm, login_only = guard["roles"], guard["perm"], guard["login"]
+        if guard.get("super"):
+            if not user:
+                return json_response({"error": "로그인이 필요합니다", "loginRequired": True}, 401)
+            if not super_admin.is_super(user):
+                return json_response({"error": "최고관리자만 볼 수 있습니다"}, 403)
         if perm is not None or login_only or roles is not None:
             if not user:
                 return json_response({"error": "로그인이 필요합니다", "loginRequired": True}, 401)

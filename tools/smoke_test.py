@@ -1683,6 +1683,157 @@ st, pub_com2 = anon.get("/api/public/community")
 check("숨긴 글은 손님 화면에서 빠짐",
       not any(p["id"] == post1["id"] for p in pub_com2["posts"]), pub_com2)
 
+# ---------------------------------------------------------------- 39. 최고관리자
+print("\n[39] 최고관리자(플랫폼 운영자) 권한·대시보드")
+st, _ = anon.get("/api/super-admin/overview")
+check("비로그인 최고관리자 API 401", st == 401, st)
+st, _ = noredir.get("/super-admin")
+check("비로그인 /super-admin 은 /login 으로(302)", st == 302, st)
+st, _ = other.get("/api/super-admin/overview")
+check("일반 사업자 계정 API 403", st == 403, st)
+st, body_b = other.get("/super-admin", raw=True)
+check("일반 사업자 /super-admin 화면 403", st == 403 and "최고관리자".encode() in body_b, st)
+st, me_b = other.get("/api/auth/me")
+check("일반 사업자 계정은 최고관리자 아님", me_b["user"].get("isSuperAdmin") is False)
+st, _ = other.get("/api/super-admin/entities")
+check("일반 계정은 통합 목록도 403", st == 403, st)
+
+st, op_staff = owner.post("/api/staff", {"name": "운영점검", "username": "saop1",
+                                        "password": "saop1234", "role": "manager"})
+check("점검용 매니저 직원 추가", st == 201, st)
+op = Client()
+st, _ = op.login("saop1", "saop1234")
+st, me_op = op.get("/api/auth/me")
+check("직원 계정은 최고관리자 아님", me_op["user"].get("isSuperAdmin") is False)
+st, _ = op.get("/api/super-admin/overview")
+check("직원 계정 최고관리자 API 403", st == 403, st)
+st, _ = op.patch("/api/account", {"email": "kwpark0047@gmail.com"})
+check("직원 계정은 최고관리자 이메일 등록 불가", st in (400, 403), st)
+st, _ = noredir.get("/api/super-admin/overview")
+check("비로그인 API(리다이렉트 없이) 401", st == 401, st)
+
+st, acc = owner.patch("/api/account", {"email": "kwpark0047@gmail.com"})
+check("원래 사업자 계정에 최고관리자 이메일 등록",
+      st == 200 and acc.get("isSuperAdmin") is True, acc)
+st, me_owner = owner.get("/api/auth/me")
+check("최고관리자 권한이 세션에 반영", me_owner["user"].get("isSuperAdmin") is True,
+      me_owner["user"].get("isSuperAdmin"))
+check("최고관리자도 자기 매장 목록은 그대로",
+      isinstance(me_owner.get("stores"), list) and me_owner.get("canSwitchStore") is True)
+st, page = owner.get("/super-admin", raw=True)
+check("최고관리자 /super-admin 화면 열림", st == 200 and b"super-admin.js" in page, st)
+
+st, ov = owner.get("/api/super-admin/overview")
+check("전체 KPI — 사업자 계정·매장·그룹",
+      st == 200 and ov["accounts"]["total"] >= 2 and ov["stores"]["total"] >= 3
+      and ov["accounts"]["superAdmins"] >= 1, {k: ov.get(k) for k in ("accounts", "stores")})
+check("매장 공개/비공개 구분", ov["stores"]["public"] >= 1
+      and ov["stores"]["public"] + ov["stores"]["private"] == ov["stores"]["total"],
+      ov.get("stores"))
+check("전체 누적·오늘 주문과 매출",
+      ov["orders"]["allTime"]["count"] >= 1 and ov["orders"]["allTime"]["paidAmount"] >= 1
+      and ov["orders"]["today"]["count"] >= 1, ov.get("orders"))
+check("결제수단별 합계", any(m["count"] >= 1 for m in ov["payments"]["methods"]),
+      ov.get("payments"))
+check("QR·NFC 스캔 집계", ov["scans"]["total"] >= 2, ov.get("scans"))
+check("커뮤니티 글 집계", ov["community"]["total"] >= 2, ov.get("community"))
+
+st, ent = owner.get("/api/super-admin/entities")
+types = {i["type"] for i in ent.get("items", [])}
+check("계정·매장·그룹 통합 목록", st == 200 and {"account", "store", "group"} <= types, types)
+st, ent_q = owner.get("/api/super-admin/entities?q=" + urllib.parse.quote("B가게"))
+check("통합 목록 검색",
+      st == 200 and any(i["type"] == "store" and i["name"] == "B가게" for i in ent_q["items"])
+      and all(i["type"] != "store" or i["name"] == "B가게" for i in ent_q["items"])
+      and not any(i.get("name") == "맛집" for i in ent_q["items"]), ent_q.get("items"))
+st, ent_pub = owner.get("/api/super-admin/entities?kind=store&state=public")
+check("공개 매장만 필터", st == 200 and ent_pub["items"]
+      and all(i["listed"] for i in ent_pub["items"]), ent_pub.get("counts"))
+
+st, tg = owner.patch(f"/api/super-admin/stores/{store_b}", {"listed": True})
+check("최고관리자 매장 공개 토글", st == 200 and tg["store"]["listed"] is True, tg)
+st, pub_after = anon.get("/api/public/stores")
+check("공개로 바꾼 매장이 소개 목록에 나타남",
+      any(s["id"] == store_b for s in pub_after["stores"]), pub_after.get("stores"))
+st, _ = other.patch(f"/api/super-admin/stores/{store_b}", {"listed": False})
+check("일반 계정은 매장 공개 토글 403", st == 403, st)
+st, _ = owner.patch(f"/api/super-admin/stores/{store_b}", {"name": "바꿔치기"})
+check("최고관리자도 매장 정보는 못 바꿈(400)", st == 400, st)
+st, _ = owner.patch(f"/api/super-admin/stores/{store_b}", {"listed": False})
+
+st, pv = owner.patch(f"/api/super-admin/community/{post1['id']}", {"visible": True})
+check("최고관리자 커뮤니티 글 다시 공개", st == 200 and pv["post"]["visible"] is True, pv)
+st, pub_c = anon.get("/api/public/community")
+check("다시 공개한 글이 손님 화면에 나옴",
+      any(p["id"] == post1["id"] for p in pub_c["posts"]), pub_c.get("posts"))
+st, ph = owner.patch(f"/api/super-admin/community/{post1['id']}", {"visible": False})
+check("최고관리자 커뮤니티 글 숨김", st == 200 and ph["post"]["visible"] is False, ph)
+st, pub_c2 = anon.get("/api/public/community")
+check("숨긴 글은 손님 화면에서 빠짐",
+      not any(p["id"] == post1["id"] for p in pub_c2["posts"]), pub_c2.get("posts"))
+st, _ = other.patch(f"/api/super-admin/community/{post1['id']}", {"visible": True})
+check("일반 계정은 글 관리 403", st == 403, st)
+st, _ = owner.patch(f"/api/super-admin/community/{post1['id']}", {"title": "바꿔치기"})
+check("최고관리자도 글 내용은 못 바꿈(400)", st == 400, st)
+st, ov2 = owner.get("/api/super-admin/overview")
+check("최고관리자 조치 기록 남음",
+      any(a["action"].startswith("store.") for a in ov2["recentActions"])
+      and any(a["action"].startswith("community.") for a in ov2["recentActions"]),
+      ov2.get("recentActions"))
+st, rail = owner.get("/api/super-admin/orders?limit=5")
+check("최근 전체 주문 모니터링", st == 200 and len(rail["orders"]) >= 1, st)
+st, rposts = owner.get("/api/super-admin/community?state=hidden")
+check("커뮤니티 글 상태 필터", st == 200 and all(not p["visible"] for p in rposts["posts"]),
+      rposts.get("posts"))
+
+# ---------------------------------------------------------------- 40. 라이브 화면 버그 회귀
+print("\n[40] 라이브 화면 버그 회귀(/online·주문서·메뉴 로딩·결제 안내)")
+st, online_html = anon.get("/online", raw=True)
+online_text = online_html.decode("utf-8", "replace") if isinstance(online_html, bytes) else str(online_html)
+check("/online 스켈레톤·자산 버전 포함",
+      st == 200 and "on-skel" in online_text and "/assets/online.js?v=" in online_text, st)
+st, online_js = anon.get("/assets/online.js", raw=True)
+online_js_text = online_js.decode("utf-8", "replace") if isinstance(online_js, bytes) else str(online_js)
+check("/online 스크립트가 id 선택자를 # 로 찾음",
+      st == 200 and '$("#onName")' in online_js_text and '$("onName")' not in online_js_text, st)
+check("/online 은 매장 정보를 먼저 받아 닫힘 안내",
+      "/api/store" in online_js_text and "setClosed" in online_js_text)
+
+st, cust_html = anon.get("/t/3", raw=True)
+cust_text = cust_html.decode("utf-8", "replace") if isinstance(cust_html, bytes) else str(cust_html)
+check("주문서 '결제 방법' 중복 없음(한 블록)",
+      st == 200 and cust_text.count("결제 방법") == 1 and "pay-box" not in cust_text,
+      cust_text.count("결제 방법"))
+check("메뉴 첫 화면 스켈레톤·닫힌 시트 aria-hidden/inert",
+      "menu-skel" in cust_text and 'aria-hidden="true" inert' in cust_text)
+st, cust_js = anon.get("/assets/customer.js", raw=True)
+cust_js_text = cust_js.decode("utf-8", "replace") if isinstance(cust_js, bytes) else str(cust_js)
+check("원산지·알레르기 빈 값은 '정보 없음'을 감춤",
+      st == 200 and "원산지 정보 없음" not in cust_js_text and "알레르기 정보 없음" not in cust_js_text)
+check("시트 aria-hidden·inert 동기화", "syncSheets" in cust_js_text and 'removeAttribute("inert")' in cust_js_text)
+st, menu_b = anon.get("/api/menu?lang=ko")
+check("메뉴 응답에 매장·추천 포함(왕복 통합)",
+      st == 200 and menu_b.get("store") and isinstance(menu_b.get("featured"), dict)
+      and menu_b.get("categories") and menu_b.get("items"), st)
+
+st, _ = owner.patch("/api/settings", {"payments": {"transfer": {
+    "enabled": True, "bank": "", "accountNo": "", "holder": ""}}})
+st, cfg = owner.get("/api/settings")
+check("계좌 미등록이면 설정 화면에 이유 표시",
+      st == 200 and bool(cfg.get("paymentIssues", {}).get("transfer"))
+      and "TRANSFER" not in cfg.get("paymentsAvailable", []), cfg.get("paymentIssues"))
+st, m_no = anon.get("/api/payments/methods")
+check("계좌 미등록이면 손님 결제수단에 계좌이체 없음",
+      st == 200 and not any(m["code"] == "TRANSFER" for m in m_no["methods"]), m_no.get("methods"))
+st, _ = owner.patch("/api/settings", {"payments": {"transfer": {
+    "enabled": True, "bank": "김포농협", "accountNo": "123-456-789", "holder": "가게A"}}})
+st, cfg2 = owner.get("/api/settings")
+st, m_yes = anon.get("/api/payments/methods")
+check("계좌를 넣으면 설정·손님 화면 모두 일치",
+      not cfg2.get("paymentIssues", {}).get("transfer")
+      and "TRANSFER" in cfg2.get("paymentsAvailable", [])
+      and any(m["code"] == "TRANSFER" for m in m_yes["methods"]), (cfg2.get("paymentIssues"), m_yes.get("methods")))
+
 # ---------------------------------------------------------------- 요약
 print(f"\n{'='*54}\n  통과 {len(PASS)}건 / 실패 {len(FAIL)}건")
 if FAIL:

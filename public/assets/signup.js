@@ -1,6 +1,6 @@
 // 사업자 계정 만들기 — ① 매장 이름·아이디·비밀번호 ② 테이블 수 ③ 끝
 (() => {
-  const S = { storeName: "맛집", username: "", password: "", tables: 8 };
+  const S = { storeName: "맛집", username: "", password: "", email: "", tables: 8 };
   const params = new URLSearchParams(location.search);
   const oauthCode = params.get("oauth");
 
@@ -118,6 +118,7 @@
     if (pw.length < 4) { err.textContent = "비밀번호는 4자 이상으로 정해 주세요."; return; }
     if (pw !== pw2) { err.textContent = "비밀번호 확인이 맞지 않습니다."; return; }
     S.storeName = store; S.username = username; S.password = pw;
+    S.email = ($("#email") && $("#email").value || "").trim();
     showStep(2);
   };
 
@@ -128,7 +129,8 @@
     try {
       await api("/api/auth/signup", {
         method: "POST",
-        body: { storeName: S.storeName, username: S.username, password: S.password, tables },
+        body: { storeName: S.storeName, username: S.username, password: S.password, tables,
+                email: S.email },
       });
       location.href = "/admin";
     } catch (e) {

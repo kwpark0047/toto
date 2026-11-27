@@ -41,6 +41,31 @@ OWNER_PASSWORD = os.environ.get("OWNER_PW", "mangjip1234")
 OWNER_NAME = os.environ.get("OWNER_NAME", "강원 사장님")
 OWNER_PHONE = os.environ.get("OWNER_PHONE", "")
 
+# ------------------------------------------------------------------ 최고관리자
+# 플랫폼 운영자 계정. 이메일은 코드에 고정하고, 환경변수 SUPER_ADMIN_EMAILS 로는
+# '추가'만 할 수 있다(빼지는 못 한다). 실제 권한은 app/super_admin.py 가 판단한다.
+SUPER_ADMIN_EMAIL = "kwpark0047@gmail.com"
+
+
+def operator_super_admin_emails():
+    """운영자가 환경변수로 직접 지정한 추가 최고관리자 이메일(소문자)."""
+    out = set()
+    for raw in (os.environ.get("SUPER_ADMIN_EMAILS") or "").replace(";", ",").split(","):
+        email = raw.strip().lower()
+        if "@" in email and "." in email.split("@")[-1]:
+            out.add(email)
+    return out
+
+
+def super_admin_emails():
+    """최고관리자로 인정하는 모든 이메일. 고정 이메일은 언제나 포함된다."""
+    return {SUPER_ADMIN_EMAIL.lower()} | operator_super_admin_emails()
+
+
+def is_super_admin_email(email):
+    return (email or "").strip().lower() in super_admin_emails()
+
+
 SESSION_HOURS = int(os.environ.get("SESSION_HOURS", "12"))
 SESSION_COOKIE = "mj_sid"
 LOGIN_MAX_FAILS = 5          # 같은 아이디로 연속 실패 허용 횟수

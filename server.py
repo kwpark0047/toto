@@ -18,7 +18,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlsplit
 
-from app import api, auth, backup, config, settings, staff, store, tables, web, waiting
+from app import api, auth, backup, config, settings, staff, store, super_admin, tables, web, waiting
 
 BODY_LIMIT = 6 * 1024 * 1024  # 사진 업로드 포함
 
@@ -98,6 +98,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(res.status, res.content_type, res.body, res.headers)
 
         # 화면/정적 파일 — 로그인·역할 확인
+        if web.super_only(path):
+            if not user:
+                nxt = quote(path + (("?" + parts.query) if parts.query else ""), safe="/?=&")
+                return self._html(302, "", {"Location": f"/login?next={nxt}",
+                                            "Cache-Control": "no-store"})
+            if not super_admin.is_super(user):
+                return self._html(403, self._super_denied_html(user))
         perms = web.required_perms(path)
         if perms is not None:
             if not user:
@@ -135,6 +142,23 @@ class Handler(BaseHTTPRequestHandler):
   <div class="row" style="gap:8px;margin-top:16px">
     <a class="btn primary" href="/admin">주문 화면으로</a>
     <a class="btn ghost" href="/kitchen">주방 화면</a>
+  </div>
+</div></main></body></html>""".encode("utf-8").decode("utf-8")
+
+    def _super_denied_html(self, user):
+        return f"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>최고관리자만 볼 수 있습니다</title>
+<link rel="stylesheet" href="/assets/base.css"></head>
+<body><main class="wrap page" style="max-width:560px;margin-top:60px">
+<div class="card pad">
+  <h1 style="font-size:26px">최고관리자만 볼 수 있습니다</h1>
+  <p class="muted" style="line-height:1.6">
+    {user['name']} 님({user['roleLabel']}) 계정으로는 이 화면을 열 수 없습니다.<br>
+    플랫폼 전체 현황은 최고관리자 계정으로만 볼 수 있습니다.
+  </p>
+  <div class="row" style="gap:8px;margin-top:16px">
+    <a class="btn primary" href="/admin">주문 화면으로</a>
   </div>
 </div></main></body></html>""".encode("utf-8").decode("utf-8")
 

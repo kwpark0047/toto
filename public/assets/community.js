@@ -12,21 +12,21 @@
 
   function render() {
     const c = S.data.config || {};
-    $("comState").textContent = c.enabled
+    $("#comState").textContent = c.enabled
       ? `커뮤니티 켜짐 · 손님에게 ${c.showToCustomers ? "보임" : "숨김"}`
       : "커뮤니티 꺼짐";
-    $("comState").className = `badge ${c.enabled ? "green" : "red"}`;
-    $("comCount").textContent = `글 ${S.posts.length}`;
-    $("comIntro").textContent = [c.neighborhood, c.intro].filter(Boolean).join(" · ");
-    $("postKind").innerHTML = S.kinds.map((k) =>
+    $("#comState").className = `badge ${c.enabled ? "green" : "red"}`;
+    $("#comCount").textContent = `글 ${S.posts.length}`;
+    $("#comIntro").textContent = [c.neighborhood, c.intro].filter(Boolean).join(" · ");
+    $("#postKind").innerHTML = S.kinds.map((k) =>
       `<option value="${k.code}">${esc(k.label)}</option>`).join("");
 
     if (!S.posts.length) {
-      $("postList").innerHTML = `<div class="empty"><div class="ico">🏘</div>아직 글이 없습니다<br>
+      $("#postList").innerHTML = `<div class="empty"><div class="ico">🏘</div>아직 글이 없습니다<br>
         <span class="small">동네 소식이나 단골 공지를 하나 올려 보세요.</span></div>`;
       return;
     }
-    $("postList").innerHTML = S.posts.map((p) => `<div class="row between wrap" style="padding:12px 16px;border-bottom:1px solid var(--line);gap:8px">
+    $("#postList").innerHTML = S.posts.map((p) => `<div class="row between wrap" style="padding:12px 16px;border-bottom:1px solid var(--line);gap:8px">
       <div style="min-width:0">
         <div><span class="badge ${p.kind === "promo" ? "amber" : p.kind === "notice" ? "brand" : ""}">${esc(p.kindLabel)}</span>
           ${p.pinned ? '<span class="badge">고정</span>' : ""}
@@ -53,35 +53,35 @@
   function openPost(id) {
     S.editing = id ? S.posts.find((p) => p.id === id) : null;
     const p = S.editing;
-    $("postTitle").textContent = p ? "글 수정" : "글쓰기";
-    $("postKind").value = p ? p.kind : (S.kinds[0] ? S.kinds[0].code : "neighbor");
-    $("postScope").value = p && p.groupId ? "group" : "store";
-    $("postScope").disabled = !!p;
-    $("postHead").value = p ? p.title : "";
-    $("postBody").value = p ? p.body : "";
-    $("postPinned").checked = p ? p.pinned : false;
-    $("postDelete").classList.toggle("hidden", !p);
-    $("back").classList.add("on");
-    $("postSheet").classList.add("on");
+    $("#postTitle").textContent = p ? "글 수정" : "글쓰기";
+    $("#postKind").value = p ? p.kind : (S.kinds[0] ? S.kinds[0].code : "neighbor");
+    $("#postScope").value = p && p.groupId ? "group" : "store";
+    $("#postScope").disabled = !!p;
+    $("#postHead").value = p ? p.title : "";
+    $("#postBody").value = p ? p.body : "";
+    $("#postPinned").checked = p ? p.pinned : false;
+    $("#postDelete").classList.toggle("hidden", !p);
+    $("#back").classList.add("on");
+    $("#postSheet").classList.add("on");
   }
 
   function closeSheet() {
-    $("back").classList.remove("on");
-    $("postSheet").classList.remove("on");
+    $("#back").classList.remove("on");
+    $("#postSheet").classList.remove("on");
   }
-  $("back").onclick = closeSheet;
+  $("#back").onclick = closeSheet;
   $$("[data-close]").forEach((b) => b.onclick = closeSheet);
-  $("newBtn").onclick = () => openPost(null);
+  $("#newBtn").onclick = () => openPost(null);
 
-  $("postSave").onclick = async () => {
-    const body = { kind: $("postKind").value, title: $("postHead").value.trim(),
-                   body: $("postBody").value.trim(), pinned: $("postPinned").checked };
+  $("#postSave").onclick = async () => {
+    const body = { kind: $("#postKind").value, title: $("#postHead").value.trim(),
+                   body: $("#postBody").value.trim(), pinned: $("#postPinned").checked };
     try {
       if (S.editing) {
         await api(`/api/community/${S.editing.id}`, { method: "PATCH", body });
         toast("글을 저장했습니다", "ok");
       } else {
-        body.scope = $("postScope").value;
+        body.scope = $("#postScope").value;
         await api("/api/community", { method: "POST", body });
         toast("글을 올렸습니다", "ok");
       }
@@ -90,7 +90,7 @@
     } catch (e) { toast(e.message, "err"); }
   };
 
-  $("postDelete").onclick = async () => {
+  $("#postDelete").onclick = async () => {
     if (!S.editing) return;
     if (!confirm("이 글을 삭제할까요? 되돌릴 수 없습니다.")) return;
     try {

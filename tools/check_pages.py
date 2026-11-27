@@ -41,6 +41,7 @@ PAIRS = {
     "stores.html": ["util.js", "nav.js", "stores.js"],
     "community.html": ["util.js", "nav.js", "community.js"],
     "account.html": ["util.js", "nav.js", "account.js"],
+    "super-admin.html": ["util.js", "nav.js", "super-admin.js"],
     "reserve.html": ["util.js", "reserve.js"],
     "print.html": ["util.js", "print.js"],
 }
@@ -57,6 +58,10 @@ for f in sorted(os.listdir(assets)):
         ctx.eval(f"(function(){{{src}\n}});")
     except Exception as e:
         errors.append(f"JS 문법/초기화 오류 {f}: {e}")
+    # $( "id" ) 처럼 # 을 빼면 querySelector 는 id 대신 태그를 찾아 null 이 된다
+    # → 실제 브라우저에서 페이지 스크립트가 통째로 멈춘다(/online·/community 에서 생긴 버그).
+    for m in re.finditer(r'(?<!\$)\$\(\s*"([A-Za-z][A-Za-z0-9_-]*)"\s*\)', src):
+        errors.append(f"{f}: $('{m.group(1)}') 에 # 이 빠졌습니다 → $('#{m.group(1)}')")
     print(f"  문법 OK  {f}")
 
 # 2) 참조 파일

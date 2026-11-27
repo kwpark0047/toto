@@ -50,6 +50,8 @@ PAGES = {
     "/community": "community.html",
     "/account": "account.html",
     "/reserve": "reserve.html",
+    # 최고관리자(플랫폼 운영자) 전용 — 아래 SUPER_PAGES
+    "/super-admin": "super-admin.html",
 }
 
 DYNAMIC = [
@@ -78,6 +80,9 @@ PERMS = {
     "/account": (),
 }
 GUEST_ONLY = ("/login", "/signup")
+
+# 최고관리자(플랫폼 운영자)만 여는 화면. 일반 사업자·직원·비로그인은 403/302.
+SUPER_PAGES = ("/super-admin",)
 
 TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -108,6 +113,10 @@ def required_roles(path):  # 옛 이름(다른 곳에서 부를 수 있어 남�
 
 def guest_only(path):
     return path in GUEST_ONLY
+
+
+def super_only(path):
+    return path in SUPER_PAGES
 
 
 def page_file(path):

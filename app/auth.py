@@ -95,17 +95,23 @@ def attempts_left(username):
 
 def _user_row(row):
     raw_perms = row["permissions"] if "permissions" in row.keys() else "{}"
+    email = (row["email"] if "email" in row.keys() else "") or ""
+    role = row["role"]
+    supervised = (bool(row["is_super_admin"]) if "is_super_admin" in row.keys() else False)
     return {
         "id": row["id"],
         "username": row["username"],
         "name": row["name"],
-        "role": row["role"],
-        "roleLabel": config.ROLE_LABELS.get(row["role"], row["role"]),
+        "role": role,
+        "roleLabel": config.ROLE_LABELS.get(role, role),
         "active": bool(row["active"]),
         "storeId": (row["store_id"] if "store_id" in row.keys() else 1) or 1,
         "accountId": (row["account_id"] if "account_id" in row.keys() else 0) or 0,
         "mustChange": bool(row["must_change"]) if "must_change" in row.keys() else False,
-        "permissions": sorted(permissions_for(row["role"], raw_perms)),
+        "email": email,
+        # 최고관리자는 '사업자(admin) 계정 + 저장된 플래그 + 고정 이메일'이 모두 맞을 때만
+        "isSuperAdmin": bool(supervised and role == "admin" and config.is_super_admin_email(email)),
+        "permissions": sorted(permissions_for(role, raw_perms)),
     }
 
 
@@ -158,6 +164,11 @@ def login(username, password, ip="", user_agent=""):
     _clear_fail(username)
     token, expires = _new_session(row["id"], ip, user_agent,
                                  row["store_id"] if "store_id" in row.keys() else 1)
+    # 이메일로 최고관리자 자격이 생긴 계정이면 플래그를 맞춘다(바뀔 때만 저장한다)
+    from . import super_admin
+    if super_admin.ensure_flag(row["id"]):
+        with store.read() as conn:
+            row = conn.execute("SELECT * FROM staff WHERE id=?", (row["id"],)).fetchone()
     user = _user_row(row)
     user["storeId"] = row["store_id"] if "store_id" in row.keys() else 1
     return user, token, expires
@@ -174,6 +185,10 @@ def login_staff(staff_id, ip="", user_agent=""):
         raise AuthError("계정을 찾을 수 없습니다", 404)
     if not row["active"]:
         raise AuthError("사용하지 않는 계정입니다. 사장님에게 문의해 주세요")
+    from . import super_admin as _super_admin
+    if _super_admin.ensure_flag(staff_id):
+        with store.read() as conn:
+            row = conn.execute("SELECT * FROM staff WHERE id=?", (staff_id,)).fetchone()
     store_id = row["store_id"] if "store_id" in row.keys() else 1
     token, expires = _new_session(row["id"], ip, user_agent, store_id)
     user = _user_row(row)

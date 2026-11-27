@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>w-toto · 최고관리자</title>
+<link rel="stylesheet" href="/assets/base.css?v=20261127b">
+<link rel="stylesheet" href="/assets/admin.css?v=20261127b">
+<link rel="stylesheet" href="/assets/super-admin.css?v=20261127b">
+</head>
+<body>
+<div id="nav"></div>
+<main class="wrap page sa">
+  <div class="page-head">
+    <div>
+      <div class="kicker">SUPER ADMIN · PLATFORM OVERVIEW</div>
+      <h1>플랫폼 전체</h1>
+      <p id="lead">모든 사업자의 계정·매장·그룹·주문·커뮤니티 현황입니다. 읽기 전용이며, 매장 공개 여부와 커뮤니티 글 공개만 바꿀 수 있습니다.</p>
+    </div>
+    <div class="row" style="margin-left:auto; gap:8px; flex-wrap:wrap">
+      <span class="badge line" id="whoBadge">–</span>
+      <span class="badge" id="dbBadge">–</span>
+      <button class="btn sm" id="refreshBtn">↻ 새로고침</button>
+    </div>
+  </div>
+
+  <div class="alert hidden" id="saAlert"></div>
+
+  <section class="sa-kpis" id="kpi" aria-label="플랫폼 핵심 지표"></section>
+
+  <section class="sa-row2" id="kpi2" aria-label="오늘·결제·유입·커뮤니티"></section>
+
+  <nav class="sa-tabs" id="tabs" aria-label="최고관리자 화면">
+    <button class="sa-tab on" data-tab="entities">통합 목록</button>
+    <button class="sa-tab" data-tab="orders">주문·결제</button>
+    <button class="sa-tab" data-tab="community">로컬 커뮤니티</button>
+    <button class="sa-tab" data-tab="audit">조치 기록</button>
+  </nav>
+
+  <section class="card pad sa-panel" id="panel-entities">
+    <div class="sa-toolbar">
+      <input class="input" id="entQ" type="search" placeholder="계정 아이디·이메일, 매장·그룹 이름으로 검색"
+             aria-label="사업자 계정·매장·그룹 검색">
+      <div class="chiprow" id="entKind" role="group" aria-label="목록 종류">
+        <button class="chip on" data-kind="all">전체</button>
+        <button class="chip" data-kind="account">계정</button>
+        <button class="chip" data-kind="store">매장</button>
+        <button class="chip" data-kind="group">그룹</button>
+      </div>
+      <select class="select" id="entState" aria-label="상태 필터">
+        <option value="all">상태 전체</option>
+        <option value="public">공개 매장</option>
+        <option value="private">비공개 매장</option>
+        <option value="active">사용 중</option>
+        <option value="inactive">중지</option>
+        <option value="super">최고관리자 계정</option>
+      </select>
+    </div>
+    <div class="sa-toolrow" id="entCount">불러오는 중…</div>
+    <div class="tablewrap">
+      <table class="table sa-table">
+        <thead>
+          <tr>
+            <th>구분</th><th>이름</th><th>사업자 계정</th><th>그룹</th>
+            <th class="num">매장</th><th class="num">주문</th><th class="num">매출</th>
+            <th>상태</th><th>공개</th>
+          </tr>
+        </thead>
+        <tbody id="entityList"></tbody>
+      </table>
+    </div>
+    <p class="small muted" style="margin:12px 0 0;line-height:1.6">
+      매장 공개를 켜면 서비스 소개(동네 매장 찾기) 목록에 나옵니다. 매장 정보·메뉴·주문은
+      최고관리자 화면에서 바꿀 수 없습니다.
+    </p>
+  </section>
+
+  <section class="card pad sa-panel hidden" id="panel-orders">
+    <div class="sa-toolbar">
+      <input class="input" id="ordQ" type="search" placeholder="주문번호·매장·손님 이름으로 검색" aria-label="주문 검색">
+      <div class="chiprow" id="ordPay" role="group" aria-label="결제 상태">
+        <button class="chip on" data-pay="all">전체</button>
+        <button class="chip" data-pay="paid">결제 완료</button>
+        <button class="chip" data-pay="unpaid">결제 전</button>
+      </div>
+      <button class="btn sm ghost" id="ordReload">적용</button>
+    </div>
+    <div class="sa-toolrow" id="orderCount">불러오는 중…</div>
+    <div class="tablewrap">
+      <table class="table sa-table">
+        <thead>
+          <tr><th>주문</th><th>매장</th><th>경로</th><th class="num">금액</th>
+            <th>결제</th><th>주문 상태</th><th>시각</th></tr>
+        </thead>
+        <tbody id="orderList"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card pad sa-panel hidden" id="panel-community">
+    <div class="sa-toolbar">
+      <input class="input" id="postQ" type="search" placeholder="글 제목·내용·매장 이름으로 검색" aria-label="커뮤니티 글 검색">
+      <div class="chiprow" id="postState" role="group" aria-label="글 공개 상태">
+        <button class="chip on" data-state="all">전체</button>
+        <button class="chip" data-state="visible">공개</button>
+        <button class="chip" data-state="hidden">숨김</button>
+      </div>
+      <button class="btn sm ghost" id="postReload">적용</button>
+    </div>
+    <div class="sa-toolrow" id="postCount">불러오는 중…</div>
+    <div class="tablewrap">
+      <table class="table sa-table">
+        <thead>
+          <tr><th>글</th><th>매장</th><th>종류</th><th>작성</th><th>상태</th><th>관리</th></tr>
+        </thead>
+        <tbody id="postList"></tbody>
+      </table>
+    </div>
+    <p class="small muted" style="margin:12px 0 0;line-height:1.6">
+      숨기면 그 매장 손님 화면의 로컬 커뮤니티에서 바로 빠집니다. 글 내용은 지우지 않습니다.
+    </p>
+  </section>
+
+  <section class="card pad sa-panel hidden" id="panel-audit">
+    <div class="card-hd"><h3>최고관리자 조치 기록</h3><span class="small muted">최근 20건</span></div>
+    <div id="auditList" class="small muted">불러오는 중…</div>
+  </section>
+</main>
+<script src="/assets/util.js?v=20261127b"></script>
+<script src="/assets/nav.js?v=20261127b"></script>
+<script src="/assets/super-admin.js?v=20261127b"></script>
+</body>
+</html>

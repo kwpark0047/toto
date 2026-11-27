@@ -91,6 +91,18 @@
     const on = ["현금", tr.enabled ? "계좌이체" : "", card.enabled ? "카드" : "", quick.enabled ? "간편결제" : ""]
       .filter(Boolean).join(" · ");
     $("#paySub").textContent = on;
+    // 계좌 미등록처럼 '켰지만 손님 화면에 안 나가는' 상태를 그대로 알린다.
+    const issues = S.data.paymentIssues || {};
+    const box = $("#payIssue");
+    if (box) {
+      const lines = Object.keys(issues).map((k) => issues[k]);
+      box.classList.toggle("hidden", !lines.length);
+      box.innerHTML = lines.map((line) => esc(line)).join("<br>");
+    }
+    const missing = issues.transfer ? " · 계좌 미등록" : "";
+    if (missing && $("#paySub")) $("#paySub").textContent = on + missing;
+    const avail = (S.data.paymentsAvailable || []).length;
+    if (!avail && $("#paySub")) $("#paySub").textContent = "현금만 가능";
     $("#payAdapterNote").textContent = (card.enabled || quick.enabled)
       ? "카드·간편결제는 PG 키가 없어 모의 승인으로만 기록됩니다(실제 결제 아님)."
       : "카드·간편결제를 켜면 모의 승인으로 동작합니다(PG 계약 후 실제 연동).";

@@ -106,6 +106,10 @@ async function renderNav(active) {
   const user = data.user;
   if (!user) return;
   const items = NAV_ITEMS.filter(([, , , perms]) => can(data, perms));
+  // 최고관리자(플랫폼 운영자)에게만 보이는 메뉴. 일반 사업자·직원에게는 나오지 않는다.
+  const superLink = user.isSuperAdmin
+    ? `<a href="/super-admin" class="nav-super ${__active === "super" ? "on" : ""}" title="플랫폼 전체 현황">👑 최고관리자</a>`
+    : "";
   el.className = "topbar";
   el.innerHTML = `<div class="inner">
     <a class="brandmark" href="/admin">
@@ -115,6 +119,7 @@ async function renderNav(active) {
     <nav class="mainnav">
       ${items.map(([href, label, key]) =>
         `<a href="${href}" class="${key === __active ? "on" : ""}">${label}</a>`).join("")}
+      ${superLink}
     </nav>
     <div class="row" style="gap:6px;margin-left:6px">
       ${storeSwitchHTML(data)}

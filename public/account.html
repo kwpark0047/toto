@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0f172a">
 <title>맛집 · 내 계정</title>
-<link rel="stylesheet" href="/assets/base.css">
-<link rel="stylesheet" href="/assets/admin.css">
-<link rel="stylesheet" href="/assets/account.css">
+<link rel="stylesheet" href="/assets/base.css?v=20261127b">
+<link rel="stylesheet" href="/assets/admin.css?v=20261127b">
+<link rel="stylesheet" href="/assets/account.css?v=20261127b">
 </head>
 <body>
 <div id="nav"></div>
@@ -19,6 +19,20 @@
   <div class="card pad" style="margin-bottom:14px">
     <h3 style="font-size:18px;margin-bottom:8px">내 정보</h3>
     <div id="who" class="small muted">불러오는 중…</div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="font-size:18px;margin-bottom:8px">이메일</h3>
+    <p class="small muted" style="margin:0 0 10px;line-height:1.6">
+      플랫폼 운영자(최고관리자) 계정은 이 이메일로 알아봅니다. 손님에게는 공개되지 않고,
+      최고관리자로 등록되면 상단에 <b>최고관리자</b> 메뉴가 생깁니다.
+    </p>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input class="input" id="emailInput" type="email" inputmode="email" autocomplete="email"
+             placeholder="name@example.com" style="max-width:320px;min-height:42px">
+      <button class="btn" id="emailSave">저장</button>
+    </div>
+    <p class="small" id="emailHint" style="margin:8px 0 0"></p>
   </div>
 
   <div class="card pad" style="margin-bottom:14px">
@@ -37,8 +51,8 @@
     <div id="sessions" class="small muted">불러오는 중…</div>
   </div>
 </main>
-<script src="/assets/util.js"></script>
-<script src="/assets/nav.js"></script>
-<script src="/assets/account.js"></script>
+<script src="/assets/util.js?v=20261127b"></script>
+<script src="/assets/nav.js?v=20261127b"></script>
+<script src="/assets/account.js?v=20261127b"></script>
 </body>
 </html>

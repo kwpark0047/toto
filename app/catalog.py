@@ -206,6 +206,56 @@ def customer_menu():
     return {"categories": cats, "items": rows}
 
 
+def customer_bundle(conn=None, limit=8):
+    """고객 첫 화면 묶음 — 카테고리·메뉴·추천을 한 번의 DB 왕복으로 읽는다.
+
+    Turso 는 문장마다 HTTP 왕복이 생기므로, 세 SELECT 를 먼저 모두 보내고
+    결과를 한꺼번에 받는다(4~5초 → 1초 안짝). 추천이 없을 때만 판매량 조회가 한 번 더 붙는다.
+    """
+    close = False
+    if conn is None:
+        conn, close = store.connect(), True
+    try:
+        sid = stores.current()
+        cur_cats = conn.execute(
+            "SELECT c.id, c.name, c.sort,"
+            " (SELECT COUNT(*) FROM menu_items m WHERE m.category_id=c.id AND m.store_id=c.store_id)"
+            " AS item_count"
+            " FROM categories c WHERE c.store_id=? ORDER BY c.sort, c.id", (sid,))
+        cur_items = conn.execute(
+            "SELECT m.*, c.name AS category_name FROM menu_items m"
+            " JOIN categories c ON c.id = m.category_id"
+            " WHERE m.store_id=? ORDER BY c.sort, c.id, m.sort, m.id", (sid,))
+        cur_feat = conn.execute(
+            "SELECT m.*, c.name AS category_name FROM menu_items m"
+            " JOIN categories c ON c.id = m.category_id"
+            " WHERE m.featured=1 AND m.store_id=? ORDER BY m.featured_sort, m.sort, m.id LIMIT ?",
+            (sid, limit))
+        # ↑ 여기서 첫 fetch 를 하면 세 문장이 한 번에 실행된다.
+        cats = [{"id": r["id"], "name": r["name"], "sort": r["sort"],
+                 "itemCount": r["item_count"]} for r in cur_cats.fetchall()]
+        rows = cur_items.fetchall()
+        feats = [_row_to_item(r) for r in cur_feat.fetchall()]
+        cats = [c for c in cats if c["itemCount"] > 0]
+        allowed = {c["id"] for c in cats}
+        items = [_row_to_item(r) for r in rows if r["category_id"] in allowed]
+        if feats:
+            featured = {"items": feats, "auto": False}
+        else:
+            sold = conn.execute(
+                "SELECT m.*, c.name AS category_name, COALESCE(SUM(oi.qty),0) sold"
+                " FROM menu_items m JOIN categories c ON c.id = m.category_id"
+                " LEFT JOIN order_items oi ON oi.item_id = m.id"
+                " LEFT JOIN orders o ON o.id = oi.order_id AND o.payment_status='PAID' AND o.status<>'CANCELED'"
+                " WHERE m.store_id=? GROUP BY m.id ORDER BY sold DESC, m.sort, m.id LIMIT ?",
+                (sid, limit)).fetchall()
+            featured = {"items": [_row_to_item(r) for r in sold if r["sold"]], "auto": True}
+        return {"categories": cats, "items": items, "featured": featured}
+    finally:
+        if close:
+            conn.close()
+
+
 def _clean(data, item_id=None):
     name = (data.get("name") or "").strip()
     if not name:

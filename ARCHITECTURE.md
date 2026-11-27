@@ -20,7 +20,7 @@
 | `app/store.py` | SQLite/Turso 연결·스키마·마이그레이션·시드, `rev`, 기본 매장·구역 보장 | config |
 | `app/stores.py` | **사업자 계정 범위**(`account_scope`)별 매장 목록·추가·수정·소유 확인, 요청 단위 현재 매장(contextvar) | store |
 | `app/groups.py` | **매장 그룹**(브랜드·지역·직영/가맹), 그룹 통합 매출·메뉴 일괄 복사·직원 이동·그룹 설정 적용 | stores, stats, staff, tables |
-| `app/auth.py` | 비밀번호 해시, 로그인/잠금, 세션(매장·권한 포함), 권한 계산, 매장 전환(계정 소유 확인) | stores, config |
+| `app/auth.py` | 비밀번호 해시, 로그인/잠금, 세션(매장·권한 포함), 권한 계산, 매장 전환(계정 소유 확인), **이메일·최고관리자 플래그** | stores, config |
 | `app/staff.py` | 직원 계정·역할·세부 권한, **사업자 가입(계정별 매장 분리)**, 출퇴근·스케줄·예상 급여 | auth, settings, stores, tables |
 | `app/settings.py` | 매장별 설정: 기본·사업자·영업시간·포인트/등급·알림·QR·인쇄 + **운영 모드·결제수단·웨이팅·이벤트·로컬 커뮤니티** | stores, store |
 | `app/tables.py` | 테이블 등록·좌석·순서·비활성, **구역(홀/창가/테라스) CRUD·일괄 생성**, 코드/URL, **NFC NDEF 안내** | stores, store |
@@ -30,6 +30,7 @@
 | `app/events.py` | **고객 이벤트·쿠폰**: 첫 방문·재방문·생일·시간 할인·쿠폰 발급/사용/복원 | customers, settings |
 | `app/community.py` | **로컬 커뮤니티**: 동네 소식·단골 공지·동네 이벤트·공동 프로모션(매장/그룹 범위) | settings, stores |
 | `app/visits.py` | **QR·NFC 유입 기록·통계**(개인정보 없음) | stores |
+| `app/super_admin.py` | **최고관리자(플랫폼 운영자)**: 고정 이메일 판정·플래그 동기화, 전체 KPI·계정/매장/그룹 통합 목록, 주문·커뮤니티 모니터링, 매장 공개·글 공개/숨김 + 조치 기록 | store, config |
 | `app/customers.py` | 회원·등급·포인트 원장·방문 이력·생일, **이벤트용 포인트 지급 공개 함수** | settings, stores |
 | `app/inventory.py` | 재료·레시피, 결제 시 차감·취소 시 복원, 안전재고 경고 | stores |
 | `app/reservations.py` | 예약 신청·확정·도착·노쇼·테이블 배정 | tables, stores |
@@ -43,7 +44,7 @@
 | `app/backup.py` | DB 스냅숏·자동 백업·복원 | store |
 | `app/api.py` | URL → 모듈 라우팅, **계정 범위·매장 범위·권한 검사**, 오류 → HTTP 상태 | 모든 업무 모듈 |
 | `app/web.py` | 화면 주소 ↔ HTML, 화면별 필요 권한 | config |
-| `server.py` | HTTP 파싱, 쿠키→세션, 화면 권한 게이트, 시작 배너 | api, web, auth, store |
+| `server.py` | HTTP 파싱, 쿠키→세션, 화면 권한 게이트(최고관리자 화면 포함), 시작 배너 | api, web, auth, store |
 
 **의존 방향**: `server → api → 업무 모듈 → store/stores`. 업무 모듈 사이 호출은
 `orders → catalog/customers/tables/inventory`, `waiting → customers/tables/notifier/orders`,
@@ -118,13 +119,14 @@
 | `community_posts` | 로컬 커뮤니티 글(매장 또는 그룹 범위) |
 | `visit_events` | QR/NFC 유입 기록(매장·테이블·via·경로) |
 | `dining_tables`, `table_zones` | 구역별 테이블(`zone_id`, `code`, `label`, `seats`, `sort`, `active`) |
-| `staff`, `staff_sessions`, `attendance` | 직원(`account_id`, `permissions`, `pay_type`, 급여), 세션(`active_store`), 출퇴근 |
+| `staff`, `staff_sessions`, `attendance` | 직원(`account_id`, `permissions`, `pay_type`, 급여, `email`, `is_super_admin`), 세션(`active_store`), 출퇴근 |
 | `staff_schedules` | 근무 스케줄(직원·날짜·시작·끝) |
 | `ingredients`, `recipes`, `ingredient_logs` | 재료·메뉴별 소모량·입출고 기록(`IN/OUT/ADJUST/RESTORE`) |
 | `reservations` | 예약(토큰·날짜·시간·인원·상태·테이블) |
 | `reviews` | 리뷰(주문 1건 UNIQUE, 별점·한 줄·숨김·답글) |
 | `waiting_tickets`, `waiting_counters` | 대기(토큰, 상태, 좌석, `purged`) / 번호 |
 | `service_calls`, `notifier_log`, `push_subscriptions`, `voice_log` | 직원 호출 / 알림 이력 / 푸시 자리 / 음성 문장 |
+| `super_admin_log` | 최고관리자의 매장 공개·글 공개/숨김 조치 기록(누가·언제·무엇) |
 | `settings`, `meta` | 매장별 설정(JSON) / `rev` |
 
 - 주문 항목은 **주문 시점 가격을 복사**한다. 가격을 바꿔도 과거 매출은 그대로.

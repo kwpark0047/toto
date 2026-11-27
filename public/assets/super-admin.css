@@ -1,0 +1,154 @@
+/* ==========================================================================
+   w-toto 최고관리자(플랫폼 운영자) 대시보드
+   base.css 의 슬레이트·에메랄드 시스템을 그대로 쓰고, 운영 화면에 필요한
+   KPI·탭·통합 목록만 얹는다.
+   ========================================================================== */
+
+body.sa-body { background: var(--bg); }
+
+.page.sa { padding-bottom: 88px; }
+
+/* 상단바의 최고관리자 링크 — 이 계정에만 보인다 */
+.mainnav a.nav-super {
+  margin-left: 4px;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+.mainnav a.nav-super:hover { background: #d1fae5; color: var(--brand-deep); }
+.mainnav a.nav-super.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* ---------- KPI ---------- */
+.sa-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sa-kpis .stat { min-height: 118px; }
+
+.sa-row2 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.sa-mini { display: flex; flex-direction: column; gap: 8px; min-height: 168px; }
+.sa-mini-hd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sa-big {
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -.045em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.sa-mini-ft {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.sa-payrow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13.5px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.sa-payrow:last-child { border-bottom: 0; }
+.sa-payrow span { color: var(--ink-2); font-weight: 700; }
+.sa-payrow b { color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.sa-payrow em { font-style: normal; font-weight: 900; font-variant-numeric: tabular-nums; }
+.sa-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- 탭 ---------- */
+.sa-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-xs);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sa-tabs::-webkit-scrollbar { display: none; }
+.sa-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 9px 15px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sa-tab:hover { background: var(--surface-2); }
+.sa-tab.on { background: var(--ink); color: #fff; }
+
+/* ---------- 패널·도구 ---------- */
+.sa-panel { margin-bottom: 16px; }
+.sa-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.sa-toolbar .input { flex: 1 1 240px; min-width: 190px; min-height: 40px; }
+.sa-toolbar .select { max-width: 170px; min-height: 40px; }
+.sa-toolbar .chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
+.sa-toolrow { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+.sa-toolrow b { color: var(--ink); font-weight: 900; }
+
+.sa-table { font-size: 13.5px; }
+.sa-table th { font-size: 10.5px; }
+.sa-table td { padding: 11px 10px; vertical-align: top; }
+.sa-table td b { font-size: 14px; letter-spacing: -.02em; }
+.sa-table .badge { font-size: 10.5px; }
+
+.sa-type {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sa-type.account { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.sa-type.store { background: var(--brand-soft); border-color: #a7f3d0; color: var(--brand-deep); }
+.sa-type.group { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+@media (max-width: 1080px) {
+  .sa-kpis { grid-template-columns: repeat(2, 1fr); }
+  .sa-row2 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .sa-kpis, .sa-row2 { grid-template-columns: 1fr; gap: 10px; }
+  .sa-mini { min-height: 0; }
+  .sa-toolbar .input, .sa-toolbar .select { flex: 1 1 100%; max-width: none; }
+  .sa-tab { padding: 8px 11px; font-size: 13.5px; }
+}
