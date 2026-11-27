@@ -103,6 +103,7 @@ def _user_row(row):
         "roleLabel": config.ROLE_LABELS.get(row["role"], row["role"]),
         "active": bool(row["active"]),
         "storeId": (row["store_id"] if "store_id" in row.keys() else 1) or 1,
+        "accountId": (row["account_id"] if "account_id" in row.keys() else 0) or 0,
         "mustChange": bool(row["must_change"]) if "must_change" in row.keys() else False,
         "permissions": sorted(permissions_for(row["role"], raw_perms)),
     }
@@ -225,22 +226,30 @@ def user_for_token(token):
     # 세션에 고른 매장이 있으면 그 매장으로, 없으면 직원의 소속 매장으로
     active = row["active_store"] or user["storeId"]
     from . import stores
+    # 다른 사업자 계정의 매장으로는 절대 들어가지 않는다(세션이 남아 있어도 소속 매장으로)
+    with store.read() as conn:
+        sr = conn.execute("SELECT owner_id FROM stores WHERE id=?", (active,)).fetchone()
+    if not sr or (user.get("accountId") and sr["owner_id"] not in (0, user["accountId"])):
+        active = user["storeId"]
     user["storeId"] = active if stores.exists(active) else user["storeId"]
     return user
 
 
 def switch_store(user, token, store_id):
-    """관리자가 일하는 매장을 바꾼다(세션 단위). 다른 역할은 소속 매장을 벗어날 수 없다."""
+    """사업자 계정이 일하는 매장을 바꾼다(세션 단위). 다른 계정의 매장으로는 바꿀 수 없다."""
     from . import stores
     if not user:
         raise AuthError("로그인이 필요합니다")
     if user["role"] != "admin":
-        raise ForbiddenError("매장 전환은 관리자만 할 수 있습니다")
+        raise ForbiddenError("매장 전환은 사장님(관리자)만 할 수 있습니다")
     try:
         sid = int(store_id)
     except (TypeError, ValueError):
         raise ValueError("매장을 골라 주세요")
-    target = stores.get(sid)
+    with stores.account_scope(user.get("accountId")):
+        if not stores.owned(sid):
+            raise LookupError("매장을 찾을 수 없습니다")
+        target = stores.get(sid)
     if not target["active"]:
         raise ValueError("사용하지 않는 매장입니다")
     with store.tx() as conn:

@@ -15,7 +15,7 @@ import re
 import secrets
 from datetime import datetime, timedelta
 
-from . import customers, notifier, stores, store, tables
+from . import customers, notifier, settings, stores, store, tables
 
 FMT = "%Y-%m-%d %H:%M:%S"
 STATUSES = {"WAITING": "대기", "CALLED": "호출 중", "SEATED": "입장", "CANCELED": "취소", "NOSHOW": "노쇼"}
@@ -94,8 +94,17 @@ def _active_for_phone(conn, phone):
         " AND store_id=? ORDER BY id DESC LIMIT 1", (phone, stores.current())).fetchone()
 
 
+def config():
+    """웨이팅 ON/OFF·안내 문구·한 팀 최대 인원(매장 설정)."""
+    return settings.waiting_conf()
+
+
 def create(name, phone, party_size, consent, note=""):
     """대기 접수. 같은 번호로 다시 접수하면 기존 대기를 그대로 돌려준다."""
+    conf = config()
+    if not conf.get("enabled"):
+        raise ValueError("지금은 웨이팅을 받지 않습니다. 매장에 문의해 주세요")
+    limit_party = int(conf.get("maxParty") or MAX_PARTY)
     name = (name or "").strip()
     if not name:
         raise ValueError("이름을 넣어 주세요")
@@ -108,8 +117,8 @@ def create(name, phone, party_size, consent, note=""):
         party = int(party_size or 1)
     except (TypeError, ValueError):
         raise ValueError("인원은 숫자로 넣어 주세요")
-    if not (1 <= party <= MAX_PARTY):
-        raise ValueError(f"인원은 1~{MAX_PARTY}명 사이로 넣어 주세요")
+    if not (1 <= party <= min(MAX_PARTY, limit_party)):
+        raise ValueError(f"인원은 1~{min(MAX_PARTY, limit_party)}명 사이로 넣어 주세요")
     cleanup()
     with store.tx() as conn:
         found = _active_for_phone(conn, phone)

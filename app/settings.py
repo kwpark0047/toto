@@ -40,6 +40,41 @@ DEFAULTS = {
         "badge": "initial", "caption": "auto", "border": 4, "badgeImage": "",
     },
     "voice": {"saveText": True},
+    # 온·오프라인 운영 모드 — 기본은 지금처럼 테이블 QR(오프라인)이다.
+    "channel": {
+        "mode": "offline",              # offline | online | both
+        "pickup": False,                 # 포장 주문 받기
+        "delivery": False,               # 배달 주문 받기
+        "preorder": True,                # 대기 중 미리 주문
+        "pickupMin": 20,                 # 포장 준비 안내(분)
+        "deliveryFee": 0,
+        "onlineNote": "",
+    },
+    # 결제수단. 현금은 언제나 쓸 수 있고, 나머지는 사장님이 켜고 끈다.
+    "payments": {
+        "cash": {"enabled": True, "feeRate": 0.0, "note": "계산대에서 현금으로 결제해 주세요"},
+        "transfer": {"enabled": True, "feeRate": 0.0, "note": "입금 후 입금자명을 남겨 주세요",
+                     "bank": "", "accountNo": "", "holder": ""},
+        "card": {"enabled": False, "feeRate": 1.5, "note": "카드 단말기에서 결제해 주세요",
+                 "provider": "none"},
+        "quick": {"enabled": False, "feeRate": 2.0, "note": "간편결제는 카운터에서 확인해 드립니다",
+                  "provider": "none"},
+    },
+    "waiting": {"enabled": True, "notice": "", "maxParty": 8},
+    # 고객 이벤트·쿠폰
+    "events": {
+        "firstVisit": {"enabled": True, "points": 500, "coupon": False},
+        "revisit": {"enabled": True, "days": 7, "points": 300},
+        "birthday": {"enabled": True, "points": 1000, "coupon": True},
+        "timeDiscount": {"enabled": False, "start": "14:00", "end": "17:00", "percent": 10},
+        "coupon": {"enabled": True, "title": "단골 감사 쿠폰", "amount": 2000,
+                    "minSpend": 10000, "validDays": 30},
+    },
+    # 로컬 커뮤니티(동네 소식·공동 프로모션)
+    "community": {
+        "enabled": False, "intro": "", "showToCustomers": True,
+        "neighborhood": "", "jointPromo": True,
+    },
     "stand": {
         "title": "메뉴 보기 · 주문", "subtitle": "휴대폰으로 찍어 주문하세요",
         "steps": "1. 카메라로 QR 찍기|2. 메뉴 고르기|3. 장바구니로 주문",
@@ -75,6 +110,8 @@ def get():
 def public():
     """고객 화면·QR·영수증에 보여 줄 값. 빈 값은 빈 문자열 그대로 두고 화면이 감춘다."""
     s = get()
+    ch = s["channel"]
+    pays = s["payments"]
     return {
         "name": s["storeName"],
         "tagline": s["tagline"],
@@ -84,7 +121,55 @@ def public():
         "paymentNote": s["paymentNote"],
         "businessNo": s["businessNo"],
         "ownerName": s["ownerName"],
+        "channel": {
+            "mode": ch["mode"], "pickup": bool(ch["pickup"]), "delivery": bool(ch["delivery"]),
+            "preorder": bool(ch["preorder"]), "pickupMin": ch["pickupMin"],
+            "deliveryFee": ch["deliveryFee"], "onlineNote": ch["onlineNote"],
+        },
+        # 손님에게는 수수료·PG 설정 없이 '어떻게 결제하면 되는지'만 알려 준다
+        "payments": {
+            code: {"enabled": bool(pays.get(code, {}).get("enabled")),
+                   "note": pays.get(code, {}).get("note", ""),
+                   "bank": pays.get(code, {}).get("bank", ""),
+                   "accountNo": pays.get(code, {}).get("accountNo", ""),
+                   "holder": pays.get(code, {}).get("holder", "")}
+            for code in ("cash", "transfer", "card", "quick")
+        },
+        "waiting": {"enabled": bool(s["waiting"]["enabled"]), "notice": s["waiting"]["notice"],
+                    "maxParty": s["waiting"]["maxParty"]},
+        "community": {"enabled": bool(s["community"]["enabled"]),
+                      "intro": s["community"]["intro"]},
     }
+
+
+def channel():
+    return get()["channel"]
+
+
+def payments():
+    return get()["payments"]
+
+
+def waiting_conf():
+    return get()["waiting"]
+
+
+def events_conf():
+    return get()["events"]
+
+
+def community_conf():
+    return get()["community"]
+
+
+def online_on():
+    """온라인(포장·배달·사전주문) 주문을 받는 상태인지."""
+    return channel()["mode"] in ("online", "both")
+
+
+def offline_on():
+    """매장 테이블 주문을 받는 상태인지."""
+    return channel()["mode"] in ("offline", "both")
 
 
 def points_rate():
@@ -174,6 +259,16 @@ def save(patch):
         data["qr"] = _clean_qr(patch.get("qr"))
     if "stand" in patch:
         data["stand"] = _clean_stand(patch.get("stand"))
+    if "channel" in patch:
+        data["channel"] = _clean_channel(patch.get("channel"))
+    if "payments" in patch:
+        data["payments"] = _clean_payments(patch.get("payments"))
+    if "waiting" in patch:
+        data["waiting"] = _clean_waiting(patch.get("waiting"))
+    if "events" in patch:
+        data["events"] = _clean_events(patch.get("events"))
+    if "community" in patch:
+        data["community"] = _clean_community(patch.get("community"))
 
     sid = stores.current()
     with store.tx() as conn:
@@ -265,6 +360,150 @@ def _clean_stand(raw):
     return out
 
 
+def _int_in(value, label, low=0, high=1000000):
+    try:
+        n = int(value or 0)
+    except (TypeError, ValueError):
+        raise ValueError(f"{label}은(는) 숫자로 넣어 주세요")
+    if not (low <= n <= high):
+        raise ValueError(f"{label}은(는) {low}~{high} 사이로 넣어 주세요")
+    return n
+
+
+def _clean_channel(raw):
+    """온·오프라인 운영 모드. 모드와 받을 주문 종류를 함께 맞춘다."""
+    if not isinstance(raw, dict):
+        raise ValueError("운영 모드 설정 형식이 올바르지 않습니다")
+    out = dict(DEFAULTS["channel"])
+    out.update({k: v for k, v in get().get("channel", {}).items() if v is not None})
+    if "mode" in raw:
+        mode = str(raw.get("mode") or "").strip()
+        if mode not in config.CHANNEL_MODES:
+            raise ValueError("운영 모드는 오프라인·온라인·통합 중에서 골라 주세요")
+        out["mode"] = mode
+    for key in ("pickup", "delivery", "preorder"):
+        if key in raw:
+            out[key] = bool(raw.get(key))
+    if "pickupMin" in raw:
+        out["pickupMin"] = _int_in(raw.get("pickupMin"), "포장 준비 시간(분)", 0, 180)
+    if "deliveryFee" in raw:
+        out["deliveryFee"] = _int_in(raw.get("deliveryFee"), "배달료", 0, 50000)
+    if "onlineNote" in raw:
+        out["onlineNote"] = _clean_text(raw.get("onlineNote"), 160)
+    if out["mode"] == "offline":
+        # 오프라인 전용 매장이면 온라인 주문을 받지 않는다(화면에도 안 나온다)
+        out["pickup"] = out["delivery"] = False
+    if out["mode"] == "online":
+        out["preorder"] = False
+    return out
+
+
+def _clean_payments(raw):
+    """결제수단 설정(켜기/끄기·수수료·안내·계좌). 현금은 끌 수 없다."""
+    if not isinstance(raw, dict):
+        raise ValueError("결제 설정 형식이 올바르지 않습니다")
+    cur = get().get("payments") or {}
+    out = {code: dict(DEFAULTS["payments"][code]) for code in DEFAULTS["payments"]}
+    for code in out:
+        out[code].update({k: v for k, v in (cur.get(code) or {}).items() if v is not None})
+    for code, incoming in raw.items():
+        if code not in out or not isinstance(incoming, dict):
+            continue
+        item = out[code]
+        if "enabled" in incoming:
+            item["enabled"] = bool(incoming.get("enabled"))
+        if "feeRate" in incoming:
+            try:
+                fee = float(incoming.get("feeRate") or 0)
+            except (TypeError, ValueError):
+                raise ValueError("결제 수수료율은 숫자로 넣어 주세요 (예: 1.5 = 1.5%)")
+            if not (0 <= fee <= 20):
+                raise ValueError("결제 수수료율은 0~20% 사이로 넣어 주세요")
+            item["feeRate"] = round(fee, 2)
+        for key in ("note", "bank", "accountNo", "holder", "provider"):
+            if key in incoming:
+                item[key] = _clean_text(incoming.get(key), 80)
+    out["cash"]["enabled"] = True      # 현금은 기본 결제수단이라 끌 수 없다
+    tr = out["transfer"]
+    if tr["enabled"] and (tr["accountNo"] or tr["bank"]) and not (tr["accountNo"] and tr["bank"]):
+        raise ValueError("계좌이체를 쓰려면 은행과 계좌번호를 함께 넣어 주세요")
+    return out
+
+
+def _clean_waiting(raw):
+    if not isinstance(raw, dict):
+        raise ValueError("웨이팅 설정 형식이 올바르지 않습니다")
+    out = dict(DEFAULTS["waiting"])
+    out.update({k: v for k, v in get().get("waiting", {}).items() if v is not None})
+    if "enabled" in raw:
+        out["enabled"] = bool(raw.get("enabled"))
+    if "notice" in raw:
+        out["notice"] = _clean_text(raw.get("notice"), 160)
+    if "maxParty" in raw:
+        out["maxParty"] = _int_in(raw.get("maxParty"), "한 팀 최대 인원", 1, 30)
+    return out
+
+
+def _clean_events(raw):
+    """이벤트·쿠폰 설정. 각 이벤트는 켜기/끄기와 조건만 받는다."""
+    if not isinstance(raw, dict):
+        raise ValueError("이벤트 설정 형식이 올바르지 않습니다")
+    cur = get().get("events") or {}
+    out = {k: dict(v) for k, v in DEFAULTS["events"].items()}
+    for key in out:
+        out[key].update({k: v for k, v in (cur.get(key) or {}).items() if v is not None})
+    for key, incoming in raw.items():
+        if key not in out or not isinstance(incoming, dict):
+            continue
+        item = out[key]
+        if "enabled" in incoming:
+            item["enabled"] = bool(incoming.get("enabled"))
+        for flag in ("coupon", "couponOn"):
+            if flag in incoming:
+                item["coupon"] = bool(incoming.get(flag))
+        if "points" in incoming:
+            item["points"] = _int_in(incoming.get("points"), "지급 포인트", 0, 100000)
+        if "days" in incoming:
+            item["days"] = _int_in(incoming.get("days"), "재방문 기준(일)", 1, 365)
+        if "percent" in incoming:
+            item["percent"] = _int_in(incoming.get("percent"), "할인율(%)", 1, 90)
+        for key2, label in (("start", "시작 시각"), ("end", "끝 시각")):
+            if key2 in incoming:
+                val = str(incoming.get(key2) or "").strip()
+                if not re.match(r"^\d{1,2}:\d{2}$", val):
+                    raise ValueError(f"시간 할인의 {label}은 14:00 형식으로 넣어 주세요")
+                item[key2] = val.zfill(5) if len(val) == 4 else val
+        if "title" in incoming:
+            item["title"] = _clean_text(incoming.get("title"), 40) or DEFAULTS["events"]["coupon"]["title"]
+        if "amount" in incoming:
+            item["amount"] = _int_in(incoming.get("amount"), "쿠폰 금액", 0, 100000)
+        if "minSpend" in incoming:
+            item["minSpend"] = _int_in(incoming.get("minSpend"), "쿠폰 최소 주문 금액", 0, 1000000)
+        if "validDays" in incoming:
+            item["validDays"] = _int_in(incoming.get("validDays"), "쿠폰 유효 기간(일)", 1, 365)
+    td = out["timeDiscount"]
+    if td["enabled"] and td["start"] >= td["end"]:
+        raise ValueError("시간 할인은 시작 시각이 끝 시각보다 빨라야 합니다")
+    return out
+
+
+def _clean_community(raw):
+    if not isinstance(raw, dict):
+        raise ValueError("로컬 커뮤니티 설정 형식이 올바르지 않습니다")
+    out = dict(DEFAULTS["community"])
+    out.update({k: v for k, v in get().get("community", {}).items() if v is not None})
+    if "enabled" in raw:
+        out["enabled"] = bool(raw.get("enabled"))
+    if "showToCustomers" in raw:
+        out["showToCustomers"] = bool(raw.get("showToCustomers"))
+    if "jointPromo" in raw:
+        out["jointPromo"] = bool(raw.get("jointPromo"))
+    for key in ("intro", "neighborhood"):
+        if key in raw:
+            out[key] = _clean_text(raw.get(key), 200 if key == "intro" else 60)
+    return out
+
+
 def profile_empty():
     """사업자 정보가 아직 비어 있는지(첫 화면 안내용)."""
     s = get()
@@ -279,5 +518,12 @@ def summary_for_admin():
         "grades": grades(),
         "baseGrade": base_grade(),
         "profileEmpty": profile_empty(),
+        "channel": s["channel"],
+        "payments": s["payments"],
+        "waiting": s["waiting"],
+        "events": s["events"],
+        "community": s["community"],
+        "channelLabels": config.CHANNEL_MODES,
+        "paymentMethods": [{"code": c, "label": l, "desc": d} for c, l, d in config.PAYMENT_METHODS],
         "env": {"ownerId": config.OWNER_USERNAME},
     }

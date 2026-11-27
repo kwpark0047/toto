@@ -24,11 +24,24 @@ TZ = ZoneInfo("Asia/Seoul")
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS stores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL DEFAULT 0,
+  group_id INTEGER NOT NULL DEFAULT 0,
+  listed INTEGER NOT NULL DEFAULT 0,
   name TEXT NOT NULL,
   tagline TEXT NOT NULL DEFAULT '',
   address TEXT NOT NULL DEFAULT '',
   phone TEXT NOT NULL DEFAULT '',
   active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS store_groups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL DEFAULT 0,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'brand',
+  memo TEXT NOT NULL DEFAULT '',
+  settings TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -354,6 +367,92 @@ CREATE TABLE IF NOT EXISTS staff_transfers (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_staff_transfers ON staff_transfers(staff_id, id);
+CREATE TABLE IF NOT EXISTS table_zones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  name TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  order_id INTEGER NOT NULL,
+  method TEXT NOT NULL DEFAULT 'CASH',
+  amount INTEGER NOT NULL DEFAULT 0,
+  fee_rate REAL NOT NULL DEFAULT 0,
+  fee INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  provider TEXT NOT NULL DEFAULT '',
+  provider_txn TEXT NOT NULL DEFAULT '',
+  simulated INTEGER NOT NULL DEFAULT 0,
+  depositor TEXT NOT NULL DEFAULT '',
+  memo TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  confirmed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, created_at);
+CREATE TABLE IF NOT EXISTS coupons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'amount',
+  amount INTEGER NOT NULL DEFAULT 0,
+  min_spend INTEGER NOT NULL DEFAULT 0,
+  valid_days INTEGER NOT NULL DEFAULT 30,
+  active INTEGER NOT NULL DEFAULT 1,
+  event TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS customer_coupons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  coupon_id INTEGER NOT NULL,
+  customer_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ISSUED',
+  order_id INTEGER,
+  issued_at TEXT NOT NULL,
+  used_at TEXT,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_customer_coupons ON customer_coupons(customer_id, status);
+CREATE TABLE IF NOT EXISTS event_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  customer_id INTEGER,
+  order_id INTEGER,
+  event TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  points INTEGER NOT NULL DEFAULT 0,
+  coupon_id INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_event_log ON event_log(store_id, id);
+CREATE TABLE IF NOT EXISTS community_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  group_id INTEGER NOT NULL DEFAULT 0,
+  kind TEXT NOT NULL DEFAULT 'neighbor',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  author TEXT NOT NULL DEFAULT '',
+  visible INTEGER NOT NULL DEFAULT 1,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_community_store ON community_posts(store_id, group_id, id);
+CREATE TABLE IF NOT EXISTS visit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  store_id INTEGER NOT NULL DEFAULT 1,
+  table_id INTEGER,
+  via TEXT NOT NULL DEFAULT 'qr',
+  path TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_visit_events ON visit_events(store_id, created_at);
 """
 
 SEED_CATEGORIES = ["분식", "한식", "사이드", "음료"]
@@ -914,6 +1013,17 @@ _ADDED_COLUMNS = [
     ("orders", "receipt_issued", "INTEGER NOT NULL DEFAULT 0"),
     ("orders", "served_at", "TEXT"),
     ("staff", "last_login_at", "TEXT"),
+    # 멀티테넌트(사업자 계정 다수) — 기존 데이터는 첫 관리자 한 계정으로 묶인다
+    ("stores", "owner_id", "INTEGER NOT NULL DEFAULT 0"),
+    ("stores", "group_id", "INTEGER NOT NULL DEFAULT 0"),
+    ("stores", "listed", "INTEGER NOT NULL DEFAULT 0"),
+    ("staff", "account_id", "INTEGER NOT NULL DEFAULT 0"),
+    ("dining_tables", "zone_id", "INTEGER NOT NULL DEFAULT 0"),
+    ("orders", "channel", "TEXT NOT NULL DEFAULT 'table'"),
+    ("orders", "discount", "INTEGER NOT NULL DEFAULT 0"),
+    ("orders", "coupon_id", "INTEGER"),
+    ("orders", "transfer_depositor", "TEXT NOT NULL DEFAULT ''"),
+    ("orders", "transfer_confirmed_at", "TEXT"),
     ("menu_items", "featured", "INTEGER NOT NULL DEFAULT 0"),
     ("menu_items", "featured_sort", "INTEGER NOT NULL DEFAULT 0"),
     ("menu_items", "featured_note", "TEXT NOT NULL DEFAULT ''"),
@@ -973,7 +1083,49 @@ def _migrate(conn):
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_store_phone"
         " ON customers(store_id, phone) WHERE phone <> ''")
     _ensure_stores(conn)
+    _migrate_accounts(conn)
+    _ensure_zones(conn)
     conn.commit()
+
+
+def _migrate_accounts(conn):
+    """기존(1사장님) 배포를 여러 사업자 계정 구조로 옮긴다.
+
+    지금까지는 배포 하나에 사장님 한 명이었으므로, 첫 관리자 계정을 소유자로
+    기존 매장·직원을 모두 그 계정에 묶는다. 새 계정은 자기 매장만 본다.
+    """
+    admin = conn.execute("SELECT id FROM staff WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    if not admin:
+        # 아직 사업자 계정이 없는 배포(첫 실행·데모)는 기본 매장을 공개 목록에 둔다.
+        conn.execute("UPDATE stores SET listed=1 WHERE owner_id=0")
+        return
+    aid = admin["id"]
+    conn.execute("UPDATE staff SET account_id=? WHERE account_id=0", (aid,))
+    # 예전(한 사장님 배포)부터 공개 매장 목록에 나오던 매장은 그대로 둔다.
+    # 새 매장은 사장님이 설정에서 직접 공개를 켠다.
+    conn.execute("UPDATE stores SET listed=1 WHERE owner_id=0")
+    conn.execute("UPDATE stores SET owner_id=? WHERE owner_id=0", (aid,))
+
+
+def _ensure_zones(conn):
+    """구역이 없는 매장은 테이블을 '홀' 구역으로 묶는다(구역별 관리의 기본값)."""
+    rows = conn.execute(
+        "SELECT DISTINCT store_id FROM dining_tables WHERE zone_id=0"
+    ).fetchall()
+    for r in rows:
+        sid = r["store_id"] or 1
+        zone = conn.execute(
+            "SELECT id FROM table_zones WHERE store_id=? ORDER BY sort, id LIMIT 1", (sid,)
+        ).fetchone()
+        if zone:
+            zid = zone["id"]
+        else:
+            cur = conn.execute(
+                "INSERT INTO table_zones(store_id, name, sort, active, created_at)"
+                " VALUES(?,?,1,1,?)", (sid, "홀", now()))
+            zid = cur.lastrowid
+        conn.execute("UPDATE dining_tables SET zone_id=? WHERE store_id=? AND zone_id=0",
+                     (zid, sid))
 
 
 def _ensure_stores(conn):
@@ -1052,6 +1204,7 @@ def init():
         conn.execute(
             "INSERT INTO meta(key, value) VALUES('rev','1') ON CONFLICT(key) DO NOTHING"
         )
+        _ensure_zones(conn)      # 시드로 생긴 테이블도 '홀' 구역으로 묶어 준다
         conn.commit()
     finally:
         conn.close()
@@ -1081,12 +1234,15 @@ def seed_board(conn):
     conn.commit()
 
 
-def seed_tables(conn, store_id=1):
+def seed_tables(conn, store_id=1, count=None):
     ts = now()
-    for i in range(1, config.STORE["tables"] + 1):
+    total = int(count) if count else config.STORE["tables"]
+    total = max(1, min(50, total))
+    for i in range(1, total + 1):
         conn.execute(
             "INSERT INTO dining_tables(store_id, code, label, seats, sort, active, created_at, updated_at)"
-            " VALUES(?,?,?,?,?,1,?,?)", (store_id, str(i), f"{i}번", 4, i, ts, ts),
+            " VALUES(?,?,?,?,?,1,?,?)",
+            (store_id, str(i), f"{i}번", 4, i, ts, ts),
         )
     conn.commit()
 

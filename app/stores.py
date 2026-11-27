@@ -1,20 +1,23 @@
 """매장(다점포) 모듈.
 
 책임:
-- 매장 목록·추가·수정(상호·간단 정보)
+- 사업자 계정(account)별 매장 목록·추가·수정(상호·간단 정보)
 - '지금 어느 매장으로 일하고 있는지'를 요청 단위로 들고 있는 것 (contextvars)
+
+멀티테넌트(2026-11): 배포 하나에 여러 사업자 계정이 가입한다.
+- 매장은 `owner_id`(사업자 계정 id)로 나뉜다. 계정은 자기 매장만 보고 바꿀 수 있다.
+- 요청마다 api.handle 이 `account_scope(user.accountId)` 를 열어 둔다.
+- 계정 범위가 없는 공개 요청(손님)은 매장 하나를 코드/?store= 로만 찾는다.
 
 다른 모듈은 `stores.current()` 로 매장 id 를 읽어 자기 테이블의 `store_id` 조건에 쓴다.
 매장 id 1 은 이전 버전의 기본 매장이며, 기존 데이터는 모두 store_id=1 로 남아 그대로 유지된다.
-
-주의: 매장을 바꾸는 것은 화면(세션) 단위다. 같은 서버에서 두 사람이 동시에 다른 매장을 봐도
-서로 섞이지 않도록 contextvar 를 쓴다(스레드마다 독립).
 """
 import contextvars
 
 from . import store
 
 _current = contextvars.ContextVar("menu_store_id", default=1)
+_account = contextvars.ContextVar("menu_account_id", default=0)
 
 
 def _clean_sid(sid):
@@ -30,6 +33,14 @@ def current():
         return int(_current.get() or 1)
     except (TypeError, ValueError):
         return 1
+
+
+def account():
+    """지금 요청의 사업자 계정 id. 0 이면 공개 요청(계정 범위 없음)."""
+    try:
+        return int(_account.get() or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 class use:
@@ -48,22 +59,53 @@ class use:
         return False
 
 
+class account_scope:
+    """with stores.account_scope(aid): … 블록 안에서만 사업자 계정을 바꾼다."""
+
+    def __init__(self, aid):
+        try:
+            self.aid = int(aid or 0)
+        except (TypeError, ValueError):
+            self.aid = 0
+        self.token = None
+
+    def __enter__(self):
+        self.token = _account.set(self.aid)
+        return self.aid
+
+    def __exit__(self, *a):
+        _account.reset(self.token)
+        return False
+
+
 def _row(r):
     return {
         "id": r["id"], "name": r["name"], "tagline": r["tagline"] or "",
         "address": r["address"] or "", "phone": r["phone"] or "",
         "active": bool(r["active"]), "createdAt": r["created_at"],
+        "ownerId": (r["owner_id"] if "owner_id" in r.keys() else 0) or 0,
+        "groupId": (r["group_id"] if "group_id" in r.keys() else 0) or 0,
+        "listed": bool(r["listed"]) if "listed" in r.keys() else False,
         "isCurrent": r["id"] == current(),
     }
 
 
 def list_stores(include_inactive=True):
+    """지금 계정의 매장. 계정 범위가 없으면(공개 요청) 전체 매장."""
     sql = "SELECT * FROM stores"
+    params = []
+    where = []
     if not include_inactive:
-        sql += " WHERE active=1"
+        where.append("active=1")
+    aid = account()
+    if aid:
+        where.append("owner_id=?")
+        params.append(aid)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY id"
     with store.read() as conn:
-        return [_row(r) for r in conn.execute(sql).fetchall()]
+        return [_row(r) for r in conn.execute(sql, params).fetchall()]
 
 
 def get(store_id=None):
@@ -73,6 +115,25 @@ def get(store_id=None):
         if not r:
             raise LookupError("매장을 찾을 수 없습니다")
         return _row(r)
+
+
+def owned(store_id=None):
+    """지금 계정의 매장인지. 계정 범위가 없으면(공개·점검) True."""
+    aid = account()
+    if not aid:
+        return True
+    try:
+        sid = int(store_id if store_id is not None else current())
+        row = get(sid)
+    except (TypeError, ValueError, LookupError):
+        return False
+    return row.get("ownerId") in (0, aid)
+
+
+def require_owned(store_id=None):
+    if not owned(store_id):
+        raise LookupError("매장을 찾을 수 없습니다")   # 다른 계정의 매장은 있는지도 알려 주지 않는다
+    return get(store_id)
 
 
 def exists(store_id):
@@ -85,9 +146,11 @@ def exists(store_id):
 
 
 def default_store_id():
-    with store.read() as conn:
-        r = conn.execute("SELECT id FROM stores WHERE active=1 ORDER BY id LIMIT 1").fetchone()
-        return r["id"] if r else 1
+    """가입 직후나 매장이 없을 때 쓸 매장. 지금 계정의 첫 매장."""
+    rows = list_stores(include_inactive=False)
+    if rows:
+        return rows[0]["id"]
+    return 1
 
 
 def _copy_menu(conn, from_sid, to_sid):
@@ -112,8 +175,11 @@ def _copy_menu(conn, from_sid, to_sid):
     return {"categories": len(mapping)}
 
 
-def create(name, table_count=8, copy_from=None):
-    """매장을 추가한다. 메뉴는 기본 메뉴를 새로 깔거나(기본), 다른 매장 메뉴를 복사한다."""
+def create(name, table_count=8, copy_from=None, group_id=0):
+    """매장을 추가한다. 메뉴는 기본 메뉴를 새로 깔거나(기본), 다른 매장 메뉴를 복사한다.
+
+    만든 매장은 지금 사업자 계정 소유가 된다. copy_from 도 같은 계정의 매장이어야 한다.
+    """
     from . import settings, tables
     name = (name or "").strip()
     if not name:
@@ -124,14 +190,21 @@ def create(name, table_count=8, copy_from=None):
         table_count = int(table_count or 0)
     except (TypeError, ValueError):
         table_count = 0
+    if copy_from and not owned(copy_from):
+        raise LookupError("복사할 매장을 찾을 수 없습니다")
+    try:
+        group_id = int(group_id or 0)
+    except (TypeError, ValueError):
+        group_id = 0
     ts = store.now()
     with store.tx() as conn:
-        dup = conn.execute("SELECT id FROM stores WHERE name=?", (name,)).fetchone()
+        dup = conn.execute("SELECT id FROM stores WHERE name=? AND owner_id=?",
+                           (name, account())).fetchone()
         if dup:
             raise ValueError(f"'{name}' 이름의 매장이 이미 있습니다")
         cur = conn.execute(
-            "INSERT INTO stores(name, tagline, address, phone, active, created_at, updated_at)"
-            " VALUES(?,'','','',1,?,?)", (name, ts, ts))
+            "INSERT INTO stores(owner_id, group_id, name, tagline, address, phone, active, created_at, updated_at)"
+            " VALUES(?,?,?,'','','',1,?,?)", (account(), group_id, name, ts, ts))
         sid = cur.lastrowid
         if copy_from:
             _copy_menu(conn, _clean_sid(copy_from), sid)
@@ -140,20 +213,22 @@ def create(name, table_count=8, copy_from=None):
         store.bump(conn)
     with use(sid):
         settings.save({"storeName": name})
-        if table_count:
-            tables.ensure_count(table_count)
+        tables.ensure_count(table_count or 1)
     return get(sid)
 
 
 def update(store_id, data):
     sid = _clean_sid(store_id)
+    if not owned(sid):
+        raise LookupError("매장을 찾을 수 없습니다")
     sets, params = [], []
     if "name" in data:
         name = (data.get("name") or "").strip()
         if not name:
             raise ValueError("매장 이름을 넣어 주세요")
         with store.read() as conn:
-            dup = conn.execute("SELECT id FROM stores WHERE name=? AND id<>?", (name, sid)).fetchone()
+            dup = conn.execute("SELECT id FROM stores WHERE name=? AND id<>? AND owner_id=?",
+                               (name, sid, account())).fetchone()
         if dup:
             raise ValueError(f"'{name}' 이름의 매장이 이미 있습니다")
         sets.append("name=?")
@@ -168,12 +243,26 @@ def update(store_id, data):
                              " 다른 매장으로 전환한 뒤 바꿔 주세요")
         sets.append("active=?")
         params.append(1 if data.get("active") else 0)
+    if "listed" in data:
+        sets.append("listed=?")
+        params.append(1 if data.get("listed") else 0)
+    if "groupId" in data:
+        try:
+            gid = int(data.get("groupId") or 0)
+        except (TypeError, ValueError):
+            raise ValueError("매장 그룹을 다시 골라 주세요")
+        from . import groups
+        if gid and not groups.owned(gid):
+            raise LookupError("매장 그룹을 찾을 수 없습니다")
+        sets.append("group_id=?")
+        params.append(gid)
     if not sets:
         return get(sid)
     sets.append("updated_at=?")
     params.append(store.now())
     with store.tx() as conn:
-        cur = conn.execute(f"UPDATE stores SET {','.join(sets)} WHERE id=?", (*params, sid))
+        cur = conn.execute(f"UPDATE stores SET {','.join(sets)} WHERE id=? AND owner_id=?",
+                           (*params, sid, account()))
         if cur.rowcount == 0:
             raise LookupError("매장을 찾을 수 없습니다")
         store.bump(conn)
@@ -319,18 +408,21 @@ def copy_menu(from_store, to_store, item_ids=None, on_duplicate="skip"):
 
 
 def transfer_staff(staff_id, to_store, actor=None, note=""):
-    """직원을 다른 매장으로 발령한다. 세션의 매장도 함께 옮기고 이력을 남긴다."""
+    """직원을 같은 사업자 계정의 다른 매장으로 발령한다. 세션의 매장도 함께 옮기고 이력을 남긴다."""
     try:
         staff_id = int(staff_id)
         dst = _clean_sid(to_store)
     except (TypeError, ValueError):
         raise ValueError("직원과 옮길 매장을 골라 주세요")
-    if not exists(dst):
+    if not exists(dst) or not owned(dst):
         raise LookupError("매장을 찾을 수 없습니다")
     with store.read() as conn:
         row = conn.execute("SELECT * FROM staff WHERE id=?", (staff_id,)).fetchone()
-        target = conn.execute("SELECT id, name, active FROM stores WHERE id=?", (dst,)).fetchone()
+        target = conn.execute("SELECT id, name, active, owner_id FROM stores WHERE id=?", (dst,)).fetchone()
     if not row:
+        raise LookupError("직원을 찾을 수 없습니다")
+    src = row["store_id"] if "store_id" in row.keys() else 1
+    if not owned(src):
         raise LookupError("직원을 찾을 수 없습니다")
     if not target or not target["active"]:
         raise ValueError("사용하지 않는 매장으로는 옮길 수 없습니다")
@@ -374,12 +466,16 @@ def transfers(staff_id=None, limit=50):
 
 
 def all_staff():
-    """모든 매장의 직원 목록(이동 화면용). 로그인 없이 노출되지 않도록 API에서 권한 검사."""
+    """지금 계정의 모든 매장 직원 목록(이동 화면용). 로그인 없이 노출되지 않도록 API에서 권한 검사."""
+    sql = ("SELECT s.id, s.username, s.name, s.role, s.active, s.store_id, st.name AS store_name"
+           " FROM staff s LEFT JOIN stores st ON st.id=s.store_id")
+    params = []
+    if account():
+        sql += " WHERE st.owner_id=?"
+        params.append(account())
+    sql += " ORDER BY st.name, s.name, s.id"
     with store.read() as conn:
-        rows = conn.execute(
-            "SELECT s.id, s.username, s.name, s.role, s.active, s.store_id, st.name AS store_name"
-            " FROM staff s LEFT JOIN stores st ON st.id=s.store_id ORDER BY st.name, s.name, s.id"
-        ).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     return {"staff": [{
         "id": r["id"], "username": r["username"], "name": r["name"], "role": r["role"],
         "active": bool(r["active"]), "storeId": r["store_id"] or 1,

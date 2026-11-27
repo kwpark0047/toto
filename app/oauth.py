@@ -287,17 +287,15 @@ def _store_name(profile):
 def login_with_profile(profile, provider, ip="", user_agent="", store_name=""):
     """소셜 프로필 → (user, token, expires, created).
 
-    이미 연결된 계정이면 로그인, 아직 사장님 계정이 없으면 매장과 함께 새로 만든다.
-    매장이 이미 있는데 연결이 없으면 unlinked (관리자 계정을 함부로 만들지 않는다).
+    이미 연결된 계정이면 로그인하고, 처음이면 자기 매장을 가진 사업자 계정을 새로 만든다.
+    배포 하나에 여러 사업자가 가입할 수 있으므로 다른 사장님이 있어도 막지 않는다.
+    (새 계정은 자기 매장만 보이고, 다른 매장 데이터는 보이지 않는다.)
     """
     staff_id = linked_staff_id(provider, profile["subject"])
     if staff_id:
         user, token, expires = auth.login_staff(staff_id, ip, user_agent)
         _touch(provider, profile["subject"])
         return user, token, expires, False
-
-    if staff.has_owner():
-        raise OAuthError("unlinked")
 
     username = _free_username(provider, profile["subject"])
     user, token, expires, _ = staff.signup(

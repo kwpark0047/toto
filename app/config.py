@@ -48,13 +48,15 @@ LOGIN_LOCK_SECONDS = 300     # 넘으면 이만큼 기다려야 다시 시도
 LOGIN_FAIL_WINDOW = 600      # 실패 횟수를 세는 구간
 PASSWORD_MIN_LEN = 4         # 시제품 최소 길이(실서비스는 8자 이상 + 2단계 인증 권장)
 
-ROLE_LABELS = {"admin": "관리자", "manager": "매니저", "counter": "카운터", "kitchen": "주방",
-              "part": "알바(시간제)"}
-ROLE_ORDER = ["admin", "manager", "counter", "kitchen", "part"]
+ROLE_LABELS = {"admin": "사장님", "head": "점장", "manager": "매니저", "counter": "카운터",
+              "hall": "홀", "kitchen": "주방", "part": "알바(시간제)"}
+ROLE_ORDER = ["admin", "head", "manager", "counter", "hall", "kitchen", "part"]
 ROLE_HINTS = {
-    "admin": "사장님 · 전부",
-    "manager": "매니저 · 설정 변경만 제외",
+    "admin": "사장님 · 전부(계정·매장 관리 포함)",
+    "head": "점장 · 매장 운영 전부(계정·결제 연동 설정 제외)",
+    "manager": "매니저 · 설정 변경·직원 관리",
     "counter": "카운터 · 주문·결제·회원·매출",
+    "hall": "홀 · 주문·서빙·테이블 확인",
     "kitchen": "주방 · 주방 화면·조리 상태·품절",
     "part": "알바(시간제) · 주문 받기·상태 변경만",
 }
@@ -77,13 +79,37 @@ PERMISSION_CODES = [p[0] for p in PERMISSIONS]
 PERMISSION_LABELS = {p[0]: p[1] for p in PERMISSIONS}
 ROLE_PERMISSIONS = {
     "admin": list(PERMISSION_CODES),
+    "head": ["menu.edit", "price.edit", "soldout.manage", "order.status", "order.manage",
+             "order.cancel", "customer.view", "sales.view", "staff.manage", "kitchen.view"],
     "manager": ["menu.edit", "price.edit", "soldout.manage", "order.status", "order.manage",
                 "order.cancel", "customer.view", "sales.view", "staff.manage", "kitchen.view"],
     "counter": ["soldout.manage", "order.manage", "order.cancel", "customer.view", "sales.view"],
+    "hall": ["order.manage", "order.status", "soldout.manage", "customer.view"],
     "kitchen": ["soldout.manage", "order.status", "kitchen.view"],
     "part": ["order.manage", "order.status"],
 }
 PART_TIME_ROLE = "part"    # 시급제로 계산하는 역할
+
+# 주문 경로(온·오프라인 매장 운영 모드와 연결)
+CHANNEL_LABELS = {
+    "table": "매장(테이블)",
+    "pickup": "포장",
+    "delivery": "배달",
+    "preorder": "사전주문(대기)",
+}
+ONLINE_CHANNELS = ("pickup", "delivery")
+CHANNEL_MODES = {"offline": "오프라인(테이블 QR·NFC)", "online": "온라인(포장·배달·사전주문)",
+                 "both": "온·오프라인 통합"}
+
+# 결제수단
+PAYMENT_METHODS = [
+    ("CASH", "현금", "계산대에서 현금으로 결제"),
+    ("TRANSFER", "계좌이체", "매장 계좌로 입금하고 사장님이 입금을 확인"),
+    ("CARD", "카드", "카드 단말기·PG 결제"),
+    ("PAY", "간편결제", "카카오페이·네이버페이 등"),
+]
+PAYMENT_METHOD_LABELS = {c: l for c, l, _d in PAYMENT_METHODS}
+PAYMENT_STATUS_LABELS = {"UNPAID": "결제 전", "PAID": "결제 완료", "TRANSFER_PENDING": "입금 확인 대기"}
 
 # ------------------------------------------------------------------ 회원·포인트
 # 등급 자동 산정 기준. 위에서부터 먼저 맞는 등급을 쓴다.

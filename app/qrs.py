@@ -47,6 +47,22 @@ def wait_url(base):
     return f"{base}/wait" + (f"?store={sid}" if sid != 1 else "")
 
 
+def nfc_table_url(base, code):
+    """NFC 태그에 쓰는 주소. ?via=nfc 로 QR 유입과 따로 센다."""
+    url = table_url(base, code)
+    sid = stores.current()
+    return url + "?via=nfc" + (f"&store={sid}" if sid != 1 else "")
+
+
+def online_order_url(base):
+    """포장·배달 주문 화면 주소(/order). **kwargs 없이 매장만 붙인다."""
+    base = (base or "").strip().rstrip("/")
+    if not base.startswith("http"):
+        raise ValueError("주소는 http:// 또는 https:// 로 시작해야 합니다")
+    sid = stores.current()
+    return f"{base}/order" + (f"?store={sid}" if sid != 1 else "")
+
+
 def design_options():
     opts = dict(qrdesign.DEFAULTS)
     current = settings.get().get("qr") or {}

@@ -27,7 +27,8 @@ LATE_GRACE_MIN = 10        # 출근 예정보다 10분 넘게 늦으면 지각
 def _role(value):
     role = (value or "").strip()
     if role not in ROLE_LABELS:
-        raise ValueError("역할은 관리자·매니저·카운터·주방·알바(시간제) 중에서 골라 주세요")
+        raise ValueError("역할은 " + "·".join(ROLE_LABELS[r] for r in config.ROLE_ORDER)
+                         + " 중에서 골라 주세요")
     return role
 
 
@@ -84,6 +85,7 @@ def _row(r):
         "role": role, "roleLabel": ROLE_LABELS.get(role, role),
         "roleHint": config.ROLE_HINTS.get(role, ""),
         "storeId": r["store_id"] if "store_id" in keys else 1,
+        "accountId": (r["account_id"] if "account_id" in keys else 0) or 0,
         "memo": r["memo"], "active": bool(r["active"]),
         "lastLoginAt": r["last_login_at"], "createdAt": r["created_at"],
         "payType": pay_type, "payLabel": {"hourly": "시급제", "monthly": "월급제"}.get(pay_type, "미정"),
@@ -223,11 +225,13 @@ def create(data, actor=None):
     with store.tx() as conn:
         if conn.execute("SELECT id FROM staff WHERE username=?", (username,)).fetchone():
             raise ValueError(f"'{username}' 아이디는 이미 쓰고 있습니다")
+        owner = conn.execute("SELECT owner_id FROM stores WHERE id=?", (stores.current(),)).fetchone()
+        account_id = (owner["owner_id"] if owner else 0) or (actor or {}).get("accountId") or 0
         cur = conn.execute(
-            "INSERT INTO staff(store_id, username, name, phone, role, memo, active, password_hash,"
+            "INSERT INTO staff(store_id, account_id, username, name, phone, role, memo, active, password_hash,"
             " permissions, pay_type, hourly_wage, monthly_salary, created_at, updated_at)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (stores.current(), username, name, (data.get("phone") or "").strip()[:30], role,
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (stores.current(), account_id, username, name, (data.get("phone") or "").strip()[:30], role,
              (data.get("memo") or "").strip()[:500], 1 if data.get("active", True) else 0,
              auth.hash_password(password), perms, pay_type, hourly, monthly, ts, ts),
         )
@@ -315,9 +319,11 @@ def _admin_count(conn):
 # ---------------------------------------------------------------- 가입
 
 def signup(store_name, username, password, table_count=None):
-    """첫 사업자 계정 만들기. 매장 이름 + 아이디·비밀번호만 받는다."""
-    if has_owner():
-        raise ValueError("이미 사업자 계정이 있습니다. 로그인해 주세요")
+    """사업자 계정 만들기. 매장 이름 + 아이디·비밀번호만 받는다.
+
+    배포 하나에 여러 사업자가 가입할 수 있다. 처음 계정은 준비된 기본 매장(1)을 물려받고,
+    그 뒤 계정은 자기 매장을 새로 만들어 시작한다(메뉴·테이블은 기본값).
+    """
     name = (store_name or "").strip() or "맛집"
     username = (username or "").strip()
     if not username:
@@ -326,24 +332,56 @@ def signup(store_name, username, password, table_count=None):
         raise ValueError("아이디는 영문·숫자로 넣어 주세요")
     password = _clean_password(password)
     ts = store.now()
+    with store.read() as conn:
+        adopt = not conn.execute("SELECT 1 FROM staff LIMIT 1").fetchone()
+        first_store = conn.execute("SELECT id FROM stores ORDER BY id LIMIT 1").fetchone()
+    sid = None
+    if adopt and first_store:
+        sid = first_store["id"]
     with store.tx() as conn:
         if conn.execute("SELECT id FROM staff WHERE username=?", (username,)).fetchone():
             raise ValueError(f"'{username}' 아이디는 이미 쓰고 있습니다")
+        if sid is None:
+            cur = conn.execute(
+                "INSERT INTO stores(owner_id, group_id, listed, name, tagline, address, phone, active,"
+                " created_at, updated_at) VALUES(0,0,0,?,?,'','',1,?,?)",
+                (name[:40], "", ts, ts))
+            sid = cur.lastrowid
+        else:
+            conn.execute("UPDATE stores SET name=?, updated_at=? WHERE id=?", (name[:40], ts, sid))
+            # 배포의 첫 매장은 서비스 소개(동네 매장 찾기)에 그대로 나오게 둔다.
+            # 새로 만드는 매장은 사장님이 설정에서 직접 공개를 켜야 목록에 나온다.
+            conn.execute("UPDATE stores SET listed=1 WHERE id=?", (sid,))
         cur = conn.execute(
-            "INSERT INTO staff(store_id, username, name, phone, role, memo, active, password_hash,"
-            " created_at, updated_at) VALUES(1,?,?,'','admin','',1,?,?,?)",
-            (username, "사장님", auth.hash_password(password), ts, ts),
+            "INSERT INTO staff(store_id, account_id, username, name, phone, role, memo, active,"
+            " password_hash, created_at, updated_at) VALUES(?,0,?,?,'','admin','',1,?,?,?)",
+            (sid, username, "사장님", auth.hash_password(password), ts, ts),
         )
         staff_id = cur.lastrowid
+        # 계정 id 는 대표(첫 관리자) 직원 id 로 둔다. 매장도 그 계정 소유로 묶는다.
+        conn.execute("UPDATE staff SET account_id=? WHERE id=?", (staff_id, staff_id))
+        conn.execute("UPDATE stores SET owner_id=? WHERE id=?", (staff_id, sid))
         store.bump(conn)
-    settings.save({"storeName": name})
-    if table_count:
-        tables.ensure_count(table_count)
+    count = table_count or config.STORE["tables"]
+    if not adopt:
+        with store.read() as conn:
+            n_items = conn.execute("SELECT COUNT(*) c FROM menu_items WHERE store_id=?",
+                                   (sid,)).fetchone()["c"]
+            n_tables = conn.execute("SELECT COUNT(*) c FROM dining_tables WHERE store_id=?",
+                                    (sid,)).fetchone()["c"]
+        if not n_items:
+            with store.connect() as conn:
+                store.seed(conn, store_id=sid)
+    with stores.use(sid):
+        settings.save({"storeName": name})
+        tables.ensure_count(table_count or (count if not adopt else 0))
     user, token, expires = auth.login(username, password)
-    return user, token, expires, get(staff_id)
+    with stores.use(sid):
+        return user, token, expires, get(staff_id)
 
 
 def has_owner():
+    """이 배포에 사업자 계정이 하나라도 있는지(첫 화면 안내용)."""
     with store.read() as conn:
         return bool(conn.execute("SELECT 1 FROM staff LIMIT 1").fetchone())
 
